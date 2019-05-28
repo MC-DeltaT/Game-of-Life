@@ -1,5 +1,4 @@
 #include <algorithm>
-#include <array>
 #include <atomic>
 #include <cassert>
 #include <chrono>
@@ -11,6 +10,7 @@
 #include <random>
 #include <thread>
 #include <utility>
+#include <vector>
 #define NOMINMAX
 #include <Windows.h>
 
@@ -144,9 +144,8 @@ struct grid {
 struct barrier {
 	std::atomic_size_t count1 = 0;
 	std::atomic_size_t count2 = 0;
-	std::size_t count;
 
-	void enter()
+	void wait()
 	{
 		++count1;
 		while (count1 > 0) {}
@@ -154,30 +153,62 @@ struct barrier {
 		while (count2 > 0) {}
 	}
 
-	void sync_with(std::size_t count)
+	void wait_for(std::size_t count)
 	{
 		while (count1 < count) {}
-		count2 = 0;
-		auto tmp = count1.load();
 		count1 = 0;
 		while (count2 < count) {}
+	}
+
+	void release()
+	{
 		count2 = 0;
+	}
+
+	void sync_with(std::size_t count)
+	{
+		wait_for(count);
+		release();
 	}
 };
 
 
-void update_thread(bool& exit, barrier& b, grid& g, std::size_t first_row, std::size_t rows)
+void update_thread(bool& exit, barrier& b, grid& g, std::size_t row_offset, std::size_t rows)
 {
+	assert(rows > 0);
 	while (!exit) {
-		b.enter();
+		b.wait();
 		if (exit) {
 			break;
 		}
-		for (std::size_t i = first_row; i < first_row + rows; ++i) {
+		for (std::size_t i = row_offset; i < row_offset + rows; ++i) {
 			for (std::size_t j = 0; j < g.cols; ++j) {
 				g.update(i, j);
 			}
 		}
+	}
+}
+
+
+std::vector<std::pair<std::size_t, std::size_t>> partition(std::size_t val, std::size_t partitions)
+{
+	if (val < partitions) {
+		return {{0, val}};
+	}
+	else {
+		std::size_t div = val / partitions;
+		std::size_t mod = val % partitions;
+
+		std::vector<std::pair<std::size_t, std::size_t>> res;
+		res.reserve(partitions);
+		std::size_t offset = 0;
+		for (std::size_t i = 0; i < partitions; ++i) {
+			std::size_t extra = mod > 0 ? 1 : 0;
+			res.emplace_back(offset, div + extra);
+			offset += div + extra;
+			mod -= extra;
+		}
+		return res;
 	}
 }
 
@@ -201,20 +232,18 @@ int main()
 	grid g(rows, cols);
 	g.rand_init();
 
-	std::array<std::thread, 2> threads;
+	constexpr std::size_t num_threads = 6;
+
+	auto partitions = partition(rows, num_threads);
+	std::vector<std::thread> threads;
+	threads.reserve(partitions.size());
 	barrier b;
 	bool exit = false;
-	std::size_t rem_rows = rows;
-	for (auto& t : threads) {
-		std::size_t curr_row = rows - std::min(rem_rows, rows);
-		std::size_t curr_rows = std::min(rem_rows, rows / (threads.size() - 1));
-		t = std::thread(update_thread, std::ref(exit), std::ref(b),
-			std::ref(g), curr_row, curr_rows);
-		rem_rows -= curr_rows;
+	for (auto const& p : partitions) {
+		threads.emplace_back(update_thread, std::ref(exit), std::ref(b), std::ref(g), p.first, p.second);
 	}
 
 	while (true) {
-		b.sync_with(threads.size());
 		SetConsoleCursorPosition(stdout_handle, COORD{0, 0});
 		for (std::size_t i = 0; i < rows; ++i) {
 			for (std::size_t j = 0; j < cols; ++j) {
@@ -228,6 +257,8 @@ int main()
 			std::cout.write(&newline, 1);
 		}
 
+		b.wait_for(threads.size());
+
 		if (std::none_of(g.curr, g.curr + rows * cols, [](auto x) { return x; })) {
 			g.rand_init();
 		}
@@ -237,11 +268,14 @@ int main()
 		else {
 			std::swap(g.curr, g.next);
 		}
+
+		b.release();
 	}
 
+	b.wait_for(threads.size());
 	exit = true;
-	b.sync_with(threads.size());
-
+	b.release();
+	
 	for (auto& t : threads) {
 		t.join();
 	}
