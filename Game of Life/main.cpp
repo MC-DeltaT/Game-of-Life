@@ -5,7 +5,6 @@
 #include <cstddef>
 #include <cstdlib>
 #include <functional>
-#include <iostream>
 #include <memory>
 #include <random>
 #include <thread>
@@ -226,9 +225,6 @@ int main()
 {
 	constexpr char live_cell = 'x';
 	constexpr char dead_cell = ' ';
-	constexpr char newline = '\n';
-
-	std::ios_base::sync_with_stdio(false);
 
 	HANDLE const stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
 
@@ -252,19 +248,27 @@ int main()
 		threads.emplace_back(update_thread, std::ref(exit), std::ref(b), std::ref(g), p.first, p.second);
 	}
 
+	b.sync_with(threads.size());
+
+	std::string display_buf(rows * (cols + 1), dead_cell);
+	for (std::size_t i = 0; i < rows; ++i) {
+		display_buf[(i * (cols + 1)) + cols] = '\n';
+	}
+
 	while (true) {
 		SetConsoleCursorPosition(stdout_handle, COORD{0, 0});
 		for (std::size_t i = 0; i < rows; ++i) {
 			for (std::size_t j = 0; j < cols; ++j) {
 				if (g.get_curr(i, j)) {
-					std::cout.write(&live_cell, 1);
+					display_buf[(i * (cols + 1)) + j] = live_cell;
 				}
 				else {
-					std::cout.write(&dead_cell, 1);
+					display_buf[(i * (cols + 1)) + j] = dead_cell;
 				}
 			}
-			std::cout.write(&newline, 1);
 		}
+		DWORD written;
+		WriteConsoleA(stdout_handle, display_buf.data(), display_buf.size(), &written, NULL);
 
 		b.wait_for(threads.size());
 
