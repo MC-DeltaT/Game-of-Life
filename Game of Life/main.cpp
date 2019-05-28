@@ -1,6 +1,5 @@
 #include <algorithm>
 #include <atomic>
-#include <cassert>
 #include <chrono>
 #include <cstddef>
 #include <cstdlib>
@@ -51,15 +50,11 @@ struct grid {
 			j %= cols;
 		}
 
-		assert(i >= 0);
-		assert(j >= 0);
 		return index(i, j);
 	}
 
 	std::size_t index(std::size_t i, std::size_t j) const
 	{
-		assert(i < rows);
-		assert(j < cols);
 		return (i * cols) + j;
 	}
 
@@ -174,7 +169,6 @@ struct barrier {
 
 void update_thread(bool& exit, barrier& b, grid& g, std::size_t row_offset, std::size_t rows)
 {
-	assert(rows > 0);
 	while (!exit) {
 		b.wait();
 		if (exit) {
@@ -204,18 +198,6 @@ std::vector<std::pair<std::size_t, std::size_t>> partition(std::size_t val, std:
 		offset += div + extra;
 		mod -= extra;
 	}
-
-#ifdef _DEBUG
-	std::size_t total = 0;
-	std::size_t next_offset = 0;
-	for (auto const& p : res) {
-		assert(p.first == next_offset);
-		total += p.second;
-		next_offset = p.first + p.second;
-	}
-	assert(next_offset == val);
-	assert(total == val);
-#endif
 
 	return res;
 }
