@@ -192,24 +192,33 @@ void update_thread(bool& exit, barrier& b, grid& g, std::size_t row_offset, std:
 
 std::vector<std::pair<std::size_t, std::size_t>> partition(std::size_t val, std::size_t partitions)
 {
-	if (val < partitions) {
-		return {{0, val}};
-	}
-	else {
-		std::size_t div = val / partitions;
-		std::size_t mod = val % partitions;
+	std::size_t actual_partitions = val < partitions ? val : partitions;
+	std::size_t div = val / actual_partitions;
+	std::size_t mod = val % actual_partitions;
 
-		std::vector<std::pair<std::size_t, std::size_t>> res;
-		res.reserve(partitions);
-		std::size_t offset = 0;
-		for (std::size_t i = 0; i < partitions; ++i) {
-			std::size_t extra = mod > 0 ? 1 : 0;
-			res.emplace_back(offset, div + extra);
-			offset += div + extra;
-			mod -= extra;
-		}
-		return res;
+	std::vector<std::pair<std::size_t, std::size_t>> res;
+	res.reserve(actual_partitions);
+	std::size_t offset = 0;
+	for (std::size_t i = 0; i < actual_partitions; ++i) {
+		std::size_t extra = mod > 0 ? 1 : 0;
+		res.emplace_back(offset, div + extra);
+		offset += div + extra;
+		mod -= extra;
 	}
+
+#ifdef _DEBUG
+	std::size_t total = 0;
+	std::size_t next_offset = 0;
+	for (auto const& p : res) {
+		assert(p.first == next_offset);
+		total += p.second;
+		next_offset = p.first + p.second;
+	}
+	assert(next_offset == val);
+	assert(total == val);
+#endif
+
+	return res;
 }
 
 
@@ -232,7 +241,7 @@ int main()
 	grid g(rows, cols);
 	g.rand_init();
 
-	constexpr std::size_t num_threads = 6;
+	constexpr std::size_t num_threads = 3;
 
 	auto partitions = partition(rows, num_threads);
 	std::vector<std::thread> threads;
