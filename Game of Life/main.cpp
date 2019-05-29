@@ -63,7 +63,7 @@ public:
 
 	T const& get(std::ptrdiff_t i, std::ptrdiff_t j) const
 	{
-		auto [i_, j_] = _wrap(i, j);
+		auto const [i_, j_] = _wrap(i, j);
 		return get(i_, j_);
 	}
 
@@ -154,7 +154,7 @@ public:
 
 	bool update_next(std::size_t i, std::size_t j)
 	{
-		bool next = _next_state(i, j);
+		bool const next = _next_state(i, j);
 		_next.get(i, j) = next;
 		return next;
 	}
@@ -172,8 +172,8 @@ private:
 	unsigned _count_neighbours(std::size_t i, std::size_t j) const
 	{
 		unsigned neighbours = 0;
-		std::ptrdiff_t i_ = i;
-		std::ptrdiff_t j_ = j;
+		std::ptrdiff_t const i_ = i;
+		std::ptrdiff_t const j_ = j;
 		neighbours += _curr.get(i_ - 1, j_ - 1);
 		neighbours += _curr.get(i_ - 1, j_    );
 		neighbours += _curr.get(i_ - 1, j_ + 1);
@@ -187,8 +187,8 @@ private:
 
 	bool _next_state(std::size_t i, std::size_t j) const
 	{
-		unsigned neighbours = _count_neighbours(i, j);
-		bool curr_state = _curr.get(i, j);
+		unsigned const neighbours = _count_neighbours(i, j);
+		bool const curr_state = _curr.get(i, j);
 		bool new_state;
 
 		if (curr_state) {
@@ -322,8 +322,8 @@ void update_thread(bool& exit, barrier& b, grid& g, std::size_t row_offset, std:
 
 std::vector<std::pair<std::size_t, std::size_t>> partition(std::size_t val, std::size_t partitions)
 {
-	std::size_t actual_partitions = val < partitions ? val : partitions;
-	std::size_t div = val / actual_partitions;
+	std::size_t const actual_partitions = val < partitions ? val : partitions;
+	std::size_t const div = val / actual_partitions;
 	std::size_t mod = val % actual_partitions;
 
 	std::vector<std::pair<std::size_t, std::size_t>> res;
