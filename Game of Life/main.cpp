@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <atomic>
+#include <cassert>
 #include <chrono>
 #include <cstddef>
 #include <cstdlib>
@@ -12,87 +13,182 @@
 #define NOMINMAX
 #include <Windows.h>
 
+#ifdef _DEBUG
+#define ASSERT(x) assert(x)
+#else
+#define ASSERT(x)
+#endif
 
-struct grid {
-	std::size_t rows;
-	std::size_t cols;
-	std::size_t size;
-	std::unique_ptr<bool[]> data1;
-	std::unique_ptr<bool[]> data2;
-	bool* curr;
-	bool* next;
 
+
+
+template<typename T>
+class matrix {
+public:
+	matrix(std::size_t rows, std::size_t cols) :
+		_rows(rows), _cols(cols), _data(new T[rows * cols])
+	{}
+
+	T* data()
+	{
+		return _data.get();
+	}
+
+	T const* data() const
+	{
+		return _data.get();
+	}
+
+	std::size_t rows() const
+	{
+		return _rows;
+	}
+
+	std::size_t cols() const
+	{
+		return _cols;
+	}
+
+	std::size_t size() const
+	{
+		return _rows * _cols;
+	}
+
+	T const& get(std::size_t i, std::size_t j) const
+	{
+		ASSERT(i < _rows);
+		ASSERT(j < _cols);
+		return _data[(i * _cols) + j];
+	}
+
+	T const& get(std::ptrdiff_t i, std::ptrdiff_t j) const
+	{
+		auto [i_, j_] = _wrap(i, j);
+		return get(i_, j_);
+	}
+
+	template<typename... Args>
+	T& get(Args&&... args)
+	{
+		return const_cast<T&>(std::as_const(*this).get(std::forward<Args>(args)...));
+	}
+
+
+	friend void swap(matrix& first, matrix& second)
+	{
+		using std::swap;
+		swap(first._rows, second._rows);
+		swap(first._cols, second._cols);
+		swap(first._data, second._data);
+	}
+
+private:
+	std::size_t _rows;
+	std::size_t _cols;
+	std::unique_ptr<T[]> _data;
+
+	std::pair<std::size_t, std::size_t> _wrap(std::ptrdiff_t i, std::ptrdiff_t j) const
+	{
+		auto wrap = [](std::ptrdiff_t x, std::size_t bound) {
+			std::size_t res;
+			if (x < 0) {
+				res = x + bound;
+			}
+			else if (x >= bound) {
+				res = x % bound;
+			}
+			else {
+				res = x;
+			}
+			ASSERT(res < bound);
+			return res;
+		};
+
+		return {wrap(i, _rows), wrap(j, _cols)};
+	}
+};
+
+
+class grid {
+public:
 	grid(std::size_t rows, std::size_t cols) :
-		rows(rows), cols(cols), size(rows * cols),
-		data1(new bool[size]), data2(new bool[size]),
-		curr(data1.get()), next(data2.get())
+		_curr(rows, cols),
+		_next(rows, cols)
 	{}
 
 	void rand_init()
 	{
 		static std::default_random_engine rand_eng(std::chrono::system_clock::now().time_since_epoch().count());
-		std::generate_n(curr, size, []() {return rand_eng() & 1u;});
+		std::generate_n(_curr.data(), _curr.size(), []() {return rand_eng() & 1u;});
 	}
 
-	std::size_t index_wrap(std::ptrdiff_t i, std::ptrdiff_t j) const
+	matrix<bool> const& curr() const
 	{
-		if (i < 0) {
-			i = rows + i;
-		}
-		else if (i >= rows) {
-			i %= rows;
-		}
-
-		if (j < 0) {
-			j = cols + j;
-		}
-		else if (j >= cols) {
-			j %= cols;
-		}
-
-		return index(i, j);
+		return _curr;
 	}
 
-	std::size_t index(std::size_t i, std::size_t j) const
+	matrix<bool> const& next() const
 	{
-		return (i * cols) + j;
+		return _next;
 	}
 
-	bool get_curr(std::size_t i, std::size_t j) const
+	std::size_t rows() const
 	{
-		return curr[index(i, j)];
+		return _curr.rows();
 	}
 
-	bool get_curr_wrap(std::ptrdiff_t i, std::ptrdiff_t j) const
+	std::size_t cols() const
 	{
-		return curr[index_wrap(i, j)];
+		return _curr.cols();
 	}
 
-	void set_next(std::size_t i, std::size_t j, bool state)
+	std::size_t size() const
 	{
-		next[index(i, j)] = state;
+		return _curr.size();
 	}
 
-	unsigned count_neighbours(std::size_t i_, std::size_t j_) const
+	bool state(std::size_t i, std::size_t j) const
 	{
-		std::ptrdiff_t i = i_;
-		std::ptrdiff_t j = j_;
+		return _curr.get(i, j);
+	}
+
+	bool update_next(std::size_t i, std::size_t j)
+	{
+		bool next = _next_state(i, j);
+		_next.get(i, j) = next;
+		return next;
+	}
+
+	void load_next()
+	{
+		swap(_curr, _next);
+	}
+
+private:
+	matrix<bool> _curr;
+	matrix<bool> _next;
+
+	
+	unsigned _count_neighbours(std::size_t i, std::size_t j) const
+	{
 		unsigned neighbours = 0;
-		neighbours += get_curr_wrap(i - 1, j - 1);
-		neighbours += get_curr_wrap(i - 1, j    );
-		neighbours += get_curr_wrap(i - 1, j + 1);
-		neighbours += get_curr_wrap(i    , j - 1);
-		neighbours += get_curr_wrap(i    , j + 1);
-		neighbours += get_curr_wrap(i + 1, j - 1);
-		neighbours += get_curr_wrap(i + 1, j    );
-		neighbours += get_curr_wrap(i + 1, j + 1);
+		std::ptrdiff_t i_ = i;
+		std::ptrdiff_t j_ = j;
+		neighbours += _curr.get(i_ - 1, j_ - 1);
+		neighbours += _curr.get(i_ - 1, j_    );
+		neighbours += _curr.get(i_ - 1, j_ + 1);
+		neighbours += _curr.get(i_    , j_ - 1);
+		neighbours += _curr.get(i_    , j_ + 1);
+		neighbours += _curr.get(i_ + 1, j_ - 1);
+		neighbours += _curr.get(i_ + 1, j_    );
+		neighbours += _curr.get(i_ + 1, j_ + 1);
 		return neighbours;
 	}
 
-	bool next_state(std::size_t i, std::size_t j) const
+	bool _next_state(std::size_t i, std::size_t j) const
 	{
-		unsigned neighbours = count_neighbours(i, j);
-		bool curr_state = get_curr(i, j);
+		unsigned neighbours = _count_neighbours(i, j);
+		bool curr_state = _curr.get(i, j);
 		bool new_state;
 
 		if (curr_state) {
@@ -117,21 +213,62 @@ struct grid {
 
 		return new_state;
 	}
+};
 
-	void update(std::size_t i, std::size_t j)
+
+class grid_display {
+public:
+	grid_display(std::size_t rows, std::size_t cols) :
+		_data(rows, cols + 1)
 	{
-		set_next(i, j, next_state(i, j));
+		for (std::size_t i = 0; i < _data.rows(); ++i) {
+			_data.get(i, cols) = '\n';
+		}
 	}
 
-	void update()
+	matrix<char> const& data() const
 	{
-		for (std::size_t i = 0; i < rows; ++i) {
-			for (std::size_t j = 0; j < cols; ++j) {
-				update(i, j);
+		return _data;
+	}
+
+	std::size_t size() const
+	{
+		return _data.size();
+	}
+
+	void set(std::size_t i, std::size_t j, bool state)
+	{
+		if (state) {
+			_data.get(i, j) = live_cell;
+		}
+		else {
+			_data.get(i, j) = dead_cell;
+		}
+	}
+
+	void load(grid const& g)
+	{
+		ASSERT(g.rows() == _data.rows());
+		ASSERT(g.cols() == _data.cols() - 1);
+		for (std::size_t i = 0; i < _data.rows(); ++i) {
+			for (std::size_t j = 0; j < g.cols(); ++j) {
+				set(i, j, g.state(i, j));
 			}
 		}
-		std::swap(curr, next);
 	}
+
+	void to_console(HANDLE console_handle)
+	{
+		SetConsoleCursorPosition(console_handle, COORD{0, 0});
+		DWORD written;
+		WriteConsoleA(console_handle, _data.data(), _data.size(), &written, NULL);
+	}
+
+private:
+	static constexpr char live_cell = 'x';
+	static constexpr char dead_cell = ' ';
+
+	matrix<char> _data;
 };
 
 
@@ -175,8 +312,8 @@ void update_thread(bool& exit, barrier& b, grid& g, std::size_t row_offset, std:
 			break;
 		}
 		for (std::size_t i = row_offset; i < row_offset + rows; ++i) {
-			for (std::size_t j = 0; j < g.cols; ++j) {
-				g.update(i, j);
+			for (std::size_t j = 0; j < g.cols(); ++j) {
+				g.update_next(i, j);
 			}
 		}
 	}
@@ -205,9 +342,6 @@ std::vector<std::pair<std::size_t, std::size_t>> partition(std::size_t val, std:
 
 int main()
 {
-	constexpr char live_cell = 'x';
-	constexpr char dead_cell = ' ';
-
 	HANDLE const stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
 
 	CONSOLE_SCREEN_BUFFER_INFO csbi;
@@ -218,6 +352,8 @@ int main()
 
 	grid g(rows, cols);
 	g.rand_init();
+
+	grid_display d(rows, cols);
 
 	constexpr std::size_t num_threads = 3;
 
@@ -230,41 +366,25 @@ int main()
 		threads.emplace_back(update_thread, std::ref(exit), std::ref(b), std::ref(g), p.first, p.second);
 	}
 
-	b.sync_with(threads.size());
-
-	std::string display_buf(rows * (cols + 1), dead_cell);
-	for (std::size_t i = 0; i < rows; ++i) {
-		display_buf[(i * (cols + 1)) + cols] = '\n';
-	}
+	b.wait_for(threads.size());
 
 	while (true) {
-		SetConsoleCursorPosition(stdout_handle, COORD{0, 0});
-		for (std::size_t i = 0; i < rows; ++i) {
-			for (std::size_t j = 0; j < cols; ++j) {
-				if (g.get_curr(i, j)) {
-					display_buf[(i * (cols + 1)) + j] = live_cell;
-				}
-				else {
-					display_buf[(i * (cols + 1)) + j] = dead_cell;
-				}
-			}
-		}
-		DWORD written;
-		WriteConsoleA(stdout_handle, display_buf.data(), display_buf.size(), &written, NULL);
+		b.release();
+
+		d.load(g);
+		d.to_console(stdout_handle);
 
 		b.wait_for(threads.size());
 
-		if (std::none_of(g.curr, g.curr + rows * cols, [](auto x) { return x; })) {
+		if (std::none_of(g.curr().data(), g.curr().data() + rows * cols, [](auto x) { return x; })) {
 			g.rand_init();
 		}
-		else if (std::equal(g.curr, g.curr + rows * cols, g.next)) {
+		else if (std::equal(g.curr().data(), g.curr().data() + g.size(), g.next().data())) {
 			g.rand_init();
 		}
 		else {
-			std::swap(g.curr, g.next);
+			g.load_next();
 		}
-
-		b.release();
 	}
 
 	b.wait_for(threads.size());
