@@ -409,18 +409,8 @@ int main()
 		d.to_console(stdout_handle);
 #endif
 
-		bool reinit = std::none_of(g.curr().data(), g.curr().data() + rows * cols, [](auto x) { return x; });
-
 		b.wait_for(threads.size());
-
-		reinit |= std::equal(g.curr().data(), g.curr().data() + g.size(), g.next().data());
-
-		if (reinit) {
-			g.rand_init();
-		}
-		else {
-			g.load_next();
-		}
+		g.load_next();
 	}
 
 #ifdef BENCHMARK
