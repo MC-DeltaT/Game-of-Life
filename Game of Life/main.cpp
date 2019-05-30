@@ -5,6 +5,7 @@
 #include <cstddef>
 #include <cstdlib>
 #include <functional>
+#include <iostream>
 #include <memory>
 #include <random>
 #include <thread>
@@ -13,12 +14,11 @@
 #define NOMINMAX
 #include <Windows.h>
 
-#ifdef _DEBUG
-#define ASSERT(x) assert(x)
-#else
-#define ASSERT(x)
-#endif
 
+//#define BENCHMARK
+#define BENCHMARK_ROWS 100
+#define BENCHMARK_COLS 100
+#define BENCHMARK_ITERATIONS 100ull
 
 
 
@@ -56,8 +56,8 @@ public:
 
 	T const& get(std::size_t i, std::size_t j) const
 	{
-		ASSERT(i < _rows);
-		ASSERT(j < _cols);
+		assert(i < _rows);
+		assert(j < _cols);
 		return _data[(i * _cols) + j];
 	}
 
@@ -100,7 +100,7 @@ private:
 			else {
 				res = x;
 			}
-			ASSERT(res < bound);
+			assert(res < bound);
 			return res;
 		};
 
@@ -248,8 +248,8 @@ public:
 
 	void load(grid const& g)
 	{
-		ASSERT(g.rows() == _data.rows());
-		ASSERT(g.cols() == _data.cols() - 1);
+		assert(g.rows() == _data.rows());
+		assert(g.cols() == _data.cols() - 1);
 		for (std::size_t i = 0; i < _data.rows(); ++i) {
 			for (std::size_t j = 0; j < g.cols(); ++j) {
 				set(i, j, g.state(i, j));
@@ -322,40 +322,61 @@ void update_thread(bool& exit, barrier& b, grid& g, std::size_t row_offset, std:
 
 std::vector<std::pair<std::size_t, std::size_t>> partition(std::size_t val, std::size_t partitions)
 {
-	std::size_t const actual_partitions = val < partitions ? val : partitions;
-	std::size_t const div = val / actual_partitions;
-	std::size_t mod = val % actual_partitions;
-
 	std::vector<std::pair<std::size_t, std::size_t>> res;
-	res.reserve(actual_partitions);
-	std::size_t offset = 0;
-	for (std::size_t i = 0; i < actual_partitions; ++i) {
-		std::size_t extra = mod > 0 ? 1 : 0;
-		res.emplace_back(offset, div + extra);
-		offset += div + extra;
-		mod -= extra;
+	if (partitions > 0) {
+		std::size_t const actual_partitions = val < partitions ? val : partitions;
+		std::size_t const div = val / actual_partitions;
+		std::size_t mod = val % actual_partitions;
+
+		res.reserve(actual_partitions);
+		std::size_t offset = 0;
+		for (std::size_t i = 0; i < actual_partitions; ++i) {
+			std::size_t extra = mod > 0 ? 1 : 0;
+			res.emplace_back(offset, div + extra);
+			offset += div + extra;
+			mod -= extra;
+		}
 	}
+
+#ifdef _DEBUG
+	std::size_t total = 0;
+	std::size_t next_offset = 0;
+	for (auto const& p : res) {
+		assert(p.first == next_offset);
+		total += p.second;
+		next_offset = p.first + p.second;
+	}
+	assert(total == val);
+#endif
 
 	return res;
 }
 
 
+std::pair<std::size_t, std::size_t> get_console_size(HANDLE console_handle)
+{
+	CONSOLE_SCREEN_BUFFER_INFO csbi{};
+	assert(GetConsoleScreenBufferInfo(console_handle, &csbi));
+	return {csbi.srWindow.Bottom - csbi.srWindow.Top,
+			csbi.srWindow.Right - csbi.srWindow.Left};
+}
+
+
 int main()
 {
+#ifdef BENCHMARK
+	constexpr std::size_t rows = BENCHMARK_ROWS;
+	constexpr std::size_t cols = BENCHMARK_COLS;
+#else
 	HANDLE const stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
-
-	CONSOLE_SCREEN_BUFFER_INFO csbi;
-	GetConsoleScreenBufferInfo(stdout_handle, &csbi);
-
-	std::size_t const rows = csbi.srWindow.Bottom - csbi.srWindow.Top;
-	std::size_t const cols = csbi.srWindow.Right - csbi.srWindow.Left;
+	auto const [rows, cols] = get_console_size(stdout_handle);
+	grid_display d(rows, cols);
+#endif
 
 	grid g(rows, cols);
 	g.rand_init();
 
-	grid_display d(rows, cols);
-
-	constexpr std::size_t num_threads = 3;
+	constexpr std::size_t num_threads = 2;
 
 	auto partitions = partition(rows, num_threads);
 	std::vector<std::thread> threads;
@@ -368,18 +389,26 @@ int main()
 
 	b.wait_for(threads.size());
 
+#ifdef BENCHMARK
+	auto const t1 = std::chrono::high_resolution_clock::now();
+	for (std::size_t n = 0; n < BENCHMARK_ITERATIONS; ++n) {
+#else
 	while (true) {
+#endif
 		b.release();
 
+#ifndef BENCHMARK
 		d.load(g);
 		d.to_console(stdout_handle);
+#endif
+
+		bool reinit = std::none_of(g.curr().data(), g.curr().data() + rows * cols, [](auto x) { return x; });
 
 		b.wait_for(threads.size());
 
-		if (std::none_of(g.curr().data(), g.curr().data() + rows * cols, [](auto x) { return x; })) {
-			g.rand_init();
-		}
-		else if (std::equal(g.curr().data(), g.curr().data() + g.size(), g.next().data())) {
+		reinit |= std::equal(g.curr().data(), g.curr().data() + g.size(), g.next().data());
+
+		if (reinit) {
 			g.rand_init();
 		}
 		else {
@@ -387,7 +416,13 @@ int main()
 		}
 	}
 
-	b.wait_for(threads.size());
+#ifdef BENCHMARK
+	auto const t2 = std::chrono::high_resolution_clock::now();
+	auto const time_total = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+	auto const iter_per_sec = BENCHMARK_ITERATIONS / (time_total / 1000000.0);
+	std::cout << iter_per_sec << " iterations per second" << std::endl;
+#endif
+
 	exit = true;
 	b.release();
 	
