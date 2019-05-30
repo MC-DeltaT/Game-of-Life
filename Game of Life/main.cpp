@@ -15,11 +15,18 @@
 #include <Windows.h>
 
 
-//#define BENCHMARK
+#define BENCHMARK
 #define BENCHMARK_ROWS 100
 #define BENCHMARK_COLS 100
-#define BENCHMARK_ITERATIONS 100ull
+#define BENCHMARK_ITERATIONS 1000000ull
 
+
+inline void debug_assert(bool b)
+{
+#ifdef _DEBUG
+	assert(b);
+#endif
+}
 
 
 template<typename T>
@@ -56,8 +63,8 @@ public:
 
 	T const& get(std::size_t i, std::size_t j) const
 	{
-		assert(i < _rows);
-		assert(j < _cols);
+		debug_assert(i < _rows);
+		debug_assert(j < _cols);
 		return _data[(i * _cols) + j];
 	}
 
@@ -100,7 +107,7 @@ private:
 			else {
 				res = x;
 			}
-			assert(res < bound);
+			debug_assert(res < bound);
 			return res;
 		};
 
@@ -248,8 +255,8 @@ public:
 
 	void load(grid const& g)
 	{
-		assert(g.rows() == _data.rows());
-		assert(g.cols() == _data.cols() - 1);
+		debug_assert(g.rows() == _data.rows());
+		debug_assert(g.cols() == _data.cols() - 1);
 		for (std::size_t i = 0; i < _data.rows(); ++i) {
 			for (std::size_t j = 0; j < g.cols(); ++j) {
 				set(i, j, g.state(i, j));
@@ -342,11 +349,11 @@ std::vector<std::pair<std::size_t, std::size_t>> partition(std::size_t val, std:
 	std::size_t total = 0;
 	std::size_t next_offset = 0;
 	for (auto const& p : res) {
-		assert(p.first == next_offset);
+		debug_assert(p.first == next_offset);
 		total += p.second;
 		next_offset = p.first + p.second;
 	}
-	assert(total == val);
+	debug_assert(total == val);
 #endif
 
 	return res;
@@ -356,7 +363,7 @@ std::vector<std::pair<std::size_t, std::size_t>> partition(std::size_t val, std:
 std::pair<std::size_t, std::size_t> get_console_size(HANDLE console_handle)
 {
 	CONSOLE_SCREEN_BUFFER_INFO csbi{};
-	assert(GetConsoleScreenBufferInfo(console_handle, &csbi));
+	debug_assert(GetConsoleScreenBufferInfo(console_handle, &csbi));
 	return {csbi.srWindow.Bottom - csbi.srWindow.Top,
 			csbi.srWindow.Right - csbi.srWindow.Left};
 }
@@ -376,7 +383,7 @@ int main()
 	grid g(rows, cols);
 	g.rand_init();
 
-	constexpr std::size_t num_threads = 2;
+	constexpr std::size_t num_threads = 3;
 
 	auto partitions = partition(rows, num_threads);
 	std::vector<std::thread> threads;
