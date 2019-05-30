@@ -21,7 +21,7 @@
 #define BENCHMARK_ITERATIONS 1000000ull
 
 
-inline void debug_assert(bool b)
+__forceinline void debug_assert(bool b)
 {
 #ifdef _DEBUG
 	assert(b);
@@ -415,8 +415,8 @@ int main()
 
 #ifdef BENCHMARK
 	auto const t2 = std::chrono::high_resolution_clock::now();
-	auto const time_total = std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
-	auto const iter_per_sec = BENCHMARK_ITERATIONS / (time_total / 1000000.0);
+	auto const time_total = std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(t2 - t1);
+	auto const iter_per_sec = BENCHMARK_ITERATIONS / (time_total.count());
 	std::cout << iter_per_sec << " iterations per second" << std::endl;
 #endif
 
