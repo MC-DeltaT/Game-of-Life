@@ -8,6 +8,7 @@
 #include <functional>
 #include <iostream>
 #include <limits>
+#include <memory>
 #include <random>
 #include <thread>
 #include <utility>
@@ -184,11 +185,12 @@ public:
 		for (std::size_t i = 0; i < _rows; ++i) {
 			for (std::size_t j = 0; j < _cols; ++j) {
 				bool const state = grid.curr_state((i * _cols) + j);
+				auto& c = _data[(i * (_cols + 1)) + j];
 				if (state) {
-					_data[(i * (_cols + 1)) + j] = live_cell;
+					c = live_cell;
 				}
 				else {
-					_data[(i * (_cols + 1)) + j] = dead_cell;
+					c = dead_cell;
 				}
 			}
 		}
@@ -199,7 +201,7 @@ public:
 		SetConsoleCursorPosition(console_handle, COORD{0, 0});
 		DWORD written;
 		debug_assert(_data.size() < std::numeric_limits<DWORD>::max());
-		WriteConsoleA(console_handle, _data.data(), _buf_size, &written, NULL);
+		WriteConsoleA(console_handle, _data.data(), static_cast<DWORD>(_buf_size), &written, NULL);
 		debug_assert(written == _buf_size);
 	}
 
@@ -215,28 +217,26 @@ private:
 };
 
 
-struct thread_barrier {
-	std::atomic_size_t count1 = 0;
-	std::atomic_size_t count2 = 0;
-
+class thread_barrier {
+public:
 	void wait()
 	{
-		++count1;
-		while (count1 > 0) {}
-		++count2;
-		while (count2 > 0) {}
+		++_count1;
+		while (_count1 > 0) {}
+		++_count2;
+		while (_count2 > 0) {}
 	}
 
 	void wait_for(std::size_t count)
 	{
-		while (count1 < count) {}
-		count1 = 0;
-		while (count2 < count) {}
+		while (_count1 < count) {}
+		_count1 = 0;
+		while (_count2 < count) {}
 	}
 
 	void release()
 	{
-		count2 = 0;
+		_count2 = 0;
 	}
 
 	void sync_with(std::size_t count)
@@ -244,6 +244,10 @@ struct thread_barrier {
 		wait_for(count);
 		release();
 	}
+
+private:
+	std::atomic_size_t _count1 = 0;
+	std::atomic_size_t _count2 = 0;
 };
 
 
