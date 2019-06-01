@@ -182,17 +182,22 @@ public:
 	{
 		debug_assert(grid.rows() == _rows);
 		debug_assert(grid.cols() == _cols);
+		std::size_t grid_idx = 0;
+		std::size_t buf_idx = 0;
 		for (std::size_t i = 0; i < _rows; ++i) {
 			for (std::size_t j = 0; j < _cols; ++j) {
-				bool const state = grid.curr_state((i * _cols) + j);
-				auto& c = _data[(i * (_cols + 1)) + j];
+				bool const state = grid.curr_state(grid_idx);
+				auto& c = _data[buf_idx];
 				if (state) {
 					c = live_cell;
 				}
 				else {
 					c = dead_cell;
 				}
+				++grid_idx;
+				++buf_idx;
 			}
+			++buf_idx;
 		}
 	}
 
