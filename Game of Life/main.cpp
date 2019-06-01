@@ -1,4 +1,5 @@
 #include <algorithm>
+#include <array>
 #include <atomic>
 #include <cassert>
 #include <chrono>
@@ -6,7 +7,7 @@
 #include <cstdlib>
 #include <functional>
 #include <iostream>
-#include <memory>
+#include <limits>
 #include <random>
 #include <thread>
 #include <utility>
@@ -29,21 +30,51 @@ __forceinline void debug_assert(bool b)
 }
 
 
-template<typename T>
-class matrix {
+class game_grid {
 public:
-	matrix(std::size_t rows, std::size_t cols) :
-		_rows(rows), _cols(cols), _data(new T[rows * cols])
-	{}
-
-	T* data()
+	game_grid(std::size_t rows, std::size_t cols) :
+		_rows(rows),
+		_cols(cols),
+		_curr(new bool[rows * cols]),
+		_next(new bool[rows * cols]),
+		_neighbour_lut(rows * cols)
 	{
-		return _data.get();
-	}
+		auto wrap = [this](std::ptrdiff_t i, std::ptrdiff_t j) {
+			auto wrap = [](std::ptrdiff_t x, std::size_t bound) {
+				std::size_t res;
+				if (x < 0) {
+					res = x + bound;
+				}
+				else if (x >= bound) {
+					res = x % bound;
+				}
+				else {
+					res = x;
+				}
+				debug_assert(res < bound);
+				return res;
+			};
 
-	T const* data() const
-	{
-		return _data.get();
+			return std::pair{wrap(i, _rows), wrap(j, _cols)};
+		};
+
+		auto to_idx = [this](std::size_t i, std::size_t j) {
+			return (i * _cols) + j;
+		};
+
+		debug_assert(_rows < std::numeric_limits<std::ptrdiff_t>::max());
+		debug_assert(_cols < std::numeric_limits<std::ptrdiff_t>::max());
+		for (std::ptrdiff_t i = 0; i < _rows; ++i) {
+			for (std::ptrdiff_t j = 0; j < _cols; ++j) {
+				std::size_t const cell_idx = to_idx(i, j);
+				for (std::size_t n = 0; n < _neighbour_offsets.size(); ++n) {
+					auto const [offset_i, offset_j] = _neighbour_offsets[n];
+					auto const [neighbour_i, neighbour_j] = wrap(i + offset_i, j + offset_j);
+					std::size_t const neighbour_idx = to_idx(neighbour_i, neighbour_j);
+					_neighbour_lut[cell_idx][n] = neighbour_idx;
+				}
+			}
+		}
 	}
 
 	std::size_t rows() const
@@ -56,113 +87,21 @@ public:
 		return _cols;
 	}
 
-	std::size_t size() const
-	{
-		return _rows * _cols;
-	}
-
-	T const& get(std::size_t i, std::size_t j) const
-	{
-		debug_assert(i < _rows);
-		debug_assert(j < _cols);
-		return _data[(i * _cols) + j];
-	}
-
-	T const& get(std::ptrdiff_t i, std::ptrdiff_t j) const
-	{
-		auto const [i_, j_] = _wrap(i, j);
-		return get(i_, j_);
-	}
-
-	template<typename... Args>
-	T& get(Args&&... args)
-	{
-		return const_cast<T&>(std::as_const(*this).get(std::forward<Args>(args)...));
-	}
-
-
-	friend void swap(matrix& first, matrix& second)
-	{
-		using std::swap;
-		swap(first._rows, second._rows);
-		swap(first._cols, second._cols);
-		swap(first._data, second._data);
-	}
-
-private:
-	std::size_t _rows;
-	std::size_t _cols;
-	std::unique_ptr<T[]> _data;
-
-	std::pair<std::size_t, std::size_t> _wrap(std::ptrdiff_t i, std::ptrdiff_t j) const
-	{
-		auto wrap = [](std::ptrdiff_t x, std::size_t bound) {
-			std::size_t res;
-			if (x < 0) {
-				res = x + bound;
-			}
-			else if (x >= bound) {
-				res = x % bound;
-			}
-			else {
-				res = x;
-			}
-			debug_assert(res < bound);
-			return res;
-		};
-
-		return {wrap(i, _rows), wrap(j, _cols)};
-	}
-};
-
-
-class grid {
-public:
-	grid(std::size_t rows, std::size_t cols) :
-		_curr(rows, cols),
-		_next(rows, cols)
-	{}
-
 	void rand_init()
 	{
 		static std::default_random_engine rand_eng(std::chrono::system_clock::now().time_since_epoch().count());
-		std::generate_n(_curr.data(), _curr.size(), []() {return rand_eng() & 1u;});
+		std::generate_n(_curr.get(), _rows * _cols, []() {return rand_eng() & 1u;});
 	}
 
-	matrix<bool> const& curr() const
+	bool curr_state(std::size_t i) const
 	{
-		return _curr;
+		return _curr[i];
 	}
 
-	matrix<bool> const& next() const
+	bool update_next(std::size_t i)
 	{
-		return _next;
-	}
-
-	std::size_t rows() const
-	{
-		return _curr.rows();
-	}
-
-	std::size_t cols() const
-	{
-		return _curr.cols();
-	}
-
-	std::size_t size() const
-	{
-		return _curr.size();
-	}
-
-	bool state(std::size_t i, std::size_t j) const
-	{
-		return _curr.get(i, j);
-	}
-
-	bool update_next(std::size_t i, std::size_t j)
-	{
-		bool const next = _next_state(i, j);
-		_next.get(i, j) = next;
+		bool const next = _next_state(i);
+		_next[i] = next;
 		return next;
 	}
 
@@ -172,30 +111,31 @@ public:
 	}
 
 private:
-	matrix<bool> _curr;
-	matrix<bool> _next;
+	static inline constexpr std::array<std::pair<std::ptrdiff_t, std::ptrdiff_t>, 8> _neighbour_offsets{
+		std::pair{-1, -1}, std::pair{-1, 0}, std::pair{-1, 1},
+		std::pair{0, -1},					 std::pair{0, 1},
+		std::pair{1, -1},  std::pair{1, 0},  std::pair{1, 1}
+	};
 
+	std::size_t _rows;
+	std::size_t _cols;
+	std::unique_ptr<bool[]> _curr;
+	std::unique_ptr<bool[]> _next;
+	std::vector<std::array<std::size_t, _neighbour_offsets.size()>> _neighbour_lut;
 	
-	unsigned _count_neighbours(std::size_t i, std::size_t j) const
+	unsigned _count_neighbours(std::size_t i) const
 	{
 		unsigned neighbours = 0;
-		std::ptrdiff_t const i_ = i;
-		std::ptrdiff_t const j_ = j;
-		neighbours += _curr.get(i_ - 1, j_ - 1);
-		neighbours += _curr.get(i_ - 1, j_    );
-		neighbours += _curr.get(i_ - 1, j_ + 1);
-		neighbours += _curr.get(i_    , j_ - 1);
-		neighbours += _curr.get(i_    , j_ + 1);
-		neighbours += _curr.get(i_ + 1, j_ - 1);
-		neighbours += _curr.get(i_ + 1, j_    );
-		neighbours += _curr.get(i_ + 1, j_ + 1);
+		for (auto offset : _neighbour_lut[i]) {
+			neighbours += _curr[offset];
+		}
 		return neighbours;
 	}
 
-	bool _next_state(std::size_t i, std::size_t j) const
+	bool _next_state(std::size_t i) const
 	{
-		unsigned const neighbours = _count_neighbours(i, j);
-		bool const curr_state = _curr.get(i, j);
+		unsigned const neighbours = _count_neighbours(i);
+		bool const curr_state = _curr[i];
 		bool new_state;
 
 		if (curr_state) {
@@ -223,63 +163,59 @@ private:
 };
 
 
-class grid_display {
+class grid_console_display {
 public:
-	grid_display(std::size_t rows, std::size_t cols) :
-		_data(rows, cols + 1)
+	grid_console_display(std::size_t rows, std::size_t cols) :
+		_data(rows * (cols + 1)),
+		_rows(rows),
+		_cols(cols),
+		_grid_size(rows * cols),
+		_buf_size(rows * (cols + 1))
 	{
-		for (std::size_t i = 0; i < _data.rows(); ++i) {
-			_data.get(i, cols) = '\n';
+		for (std::size_t i = _cols; i < _buf_size; i += _cols + 1) {
+			_data[i] = '\n';
 		}
 	}
 
-	matrix<char> const& data() const
+	void load(game_grid const& grid)
 	{
-		return _data;
-	}
-
-	std::size_t size() const
-	{
-		return _data.size();
-	}
-
-	void set(std::size_t i, std::size_t j, bool state)
-	{
-		if (state) {
-			_data.get(i, j) = live_cell;
-		}
-		else {
-			_data.get(i, j) = dead_cell;
-		}
-	}
-
-	void load(grid const& g)
-	{
-		debug_assert(g.rows() == _data.rows());
-		debug_assert(g.cols() == _data.cols() - 1);
-		for (std::size_t i = 0; i < _data.rows(); ++i) {
-			for (std::size_t j = 0; j < g.cols(); ++j) {
-				set(i, j, g.state(i, j));
+		debug_assert(grid.rows() == _rows);
+		debug_assert(grid.cols() == _cols);
+		for (std::size_t i = 0; i < _rows; ++i) {
+			for (std::size_t j = 0; j < _cols; ++j) {
+				bool const state = grid.curr_state((i * _cols) + j);
+				if (state) {
+					_data[(i * (_cols + 1)) + j] = live_cell;
+				}
+				else {
+					_data[(i * (_cols + 1)) + j] = dead_cell;
+				}
 			}
 		}
 	}
 
-	void to_console(HANDLE console_handle)
+	void display(HANDLE console_handle)
 	{
 		SetConsoleCursorPosition(console_handle, COORD{0, 0});
 		DWORD written;
-		WriteConsoleA(console_handle, _data.data(), _data.size(), &written, NULL);
+		debug_assert(_data.size() < std::numeric_limits<DWORD>::max());
+		WriteConsoleA(console_handle, _data.data(), _buf_size, &written, NULL);
+		debug_assert(written == _buf_size);
 	}
 
 private:
-	static constexpr char live_cell = 'x';
-	static constexpr char dead_cell = ' ';
+	static inline constexpr char live_cell = 'x';
+	static inline constexpr char dead_cell = ' ';
 
-	matrix<char> _data;
+	std::vector<char> _data;
+	std::size_t _rows;
+	std::size_t _cols;
+	std::size_t _grid_size;
+	std::size_t _buf_size;
 };
 
 
-struct barrier {
+struct thread_barrier {
 	std::atomic_size_t count1 = 0;
 	std::atomic_size_t count2 = 0;
 
@@ -311,17 +247,15 @@ struct barrier {
 };
 
 
-void update_thread(bool& exit, barrier& b, grid& g, std::size_t row_offset, std::size_t rows)
+void update_thread(bool& exit, thread_barrier& barrier, game_grid& grid, std::size_t offset, std::size_t count)
 {
 	while (!exit) {
-		b.wait();
+		barrier.wait();
 		if (exit) {
 			break;
 		}
-		for (std::size_t i = row_offset; i < row_offset + rows; ++i) {
-			for (std::size_t j = 0; j < g.cols(); ++j) {
-				g.update_next(i, j);
-			}
+		for (std::size_t i = offset; i < offset + count; ++i) {
+			grid.update_next(i);
 		}
 	}
 }
@@ -374,27 +308,33 @@ int main()
 #ifdef BENCHMARK
 	constexpr std::size_t rows = BENCHMARK_ROWS;
 	constexpr std::size_t cols = BENCHMARK_COLS;
+
+	std::cout << "rows: " << rows << std::endl;
+	std::cout << "columns: " << cols << std::endl;
+	std::cout << "cells: " << rows * cols << std::endl;
+	std::cout << "iterations: " << BENCHMARK_ITERATIONS << std::endl;
+	std::cout << "total cell updates: " << rows * cols * BENCHMARK_ITERATIONS << std::endl;
 #else
 	HANDLE const stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
 	auto const [rows, cols] = get_console_size(stdout_handle);
-	grid_display d(rows, cols);
+	grid_console_display display(rows, cols);
 #endif
 
-	grid g(rows, cols);
-	g.rand_init();
+	game_grid grid(rows, cols);
+	grid.rand_init();
 
 	constexpr std::size_t num_threads = 3;
 
-	auto partitions = partition(rows, num_threads);
+	auto partitions = partition(rows * cols, num_threads);
 	std::vector<std::thread> threads;
 	threads.reserve(partitions.size());
-	barrier b;
+	thread_barrier barrier;
 	bool exit = false;
 	for (auto const& p : partitions) {
-		threads.emplace_back(update_thread, std::ref(exit), std::ref(b), std::ref(g), p.first, p.second);
+		threads.emplace_back(update_thread, std::ref(exit), std::ref(barrier), std::ref(grid), p.first, p.second);
 	}
 
-	b.wait_for(threads.size());
+	barrier.wait_for(threads.size());
 
 #ifdef BENCHMARK
 	auto const t1 = std::chrono::high_resolution_clock::now();
@@ -402,26 +342,29 @@ int main()
 #else
 	while (true) {
 #endif
-		b.release();
+		barrier.release();
 
 #ifndef BENCHMARK
-		d.load(g);
-		d.to_console(stdout_handle);
+		display.load(grid);
+		display.display(stdout_handle);
 #endif
 
-		b.wait_for(threads.size());
-		g.load_next();
+		barrier.wait_for(threads.size());
+		grid.load_next();
 	}
 
 #ifdef BENCHMARK
 	auto const t2 = std::chrono::high_resolution_clock::now();
-	auto const time_total = std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(t2 - t1);
-	auto const iter_per_sec = BENCHMARK_ITERATIONS / (time_total.count());
-	std::cout << iter_per_sec << " iterations per second" << std::endl;
+	auto const total_time = std::chrono::duration_cast<std::chrono::duration<double, std::ratio<1>>>(t2 - t1).count();
+	std::cout << "total time: " << total_time << " seconds" << std::endl;
+	auto const iter_per_sec = BENCHMARK_ITERATIONS / total_time;
+	std::cout << "iterations per second: " << iter_per_sec << std::endl;
+	auto const cells_per_sec = rows * cols * BENCHMARK_ITERATIONS / total_time;
+	std::cout << "cells per second: " << cells_per_sec << std::endl;
 #endif
 
 	exit = true;
-	b.release();
+	barrier.release();
 	
 	for (auto& t : threads) {
 		t.join();
