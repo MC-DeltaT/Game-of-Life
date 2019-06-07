@@ -19,10 +19,10 @@
 #define BENCHMARK_ITERATIONS 1000000ull
 
 
-void update_thread(bool& exit, thread_barrier& barrier, game_grid& grid, std::size_t offset, std::size_t count)
+void update_thread(bool& exit, thread_sync sync, game_grid& grid, std::size_t offset, std::size_t count)
 {
 	while (!exit) {
-		barrier.wait();
+		sync.sync();
 		if (exit) {
 			break;
 		}
@@ -59,13 +59,14 @@ int main()
 	auto partitions = partition(rows * cols, num_threads);
 	std::vector<std::thread> threads;
 	threads.reserve(partitions.size());
-	thread_barrier barrier;
+	thread_sync sync;
 	bool exit = false;
 	for (auto const& p : partitions) {
-		threads.emplace_back(update_thread, std::ref(exit), std::ref(barrier), std::ref(grid), p.first, p.second);
+		threads.emplace_back(update_thread, std::ref(exit), std::ref(sync), std::ref(grid), p.first, p.second);
 	}
 
-	barrier.wait_for(threads.size());
+	while (sync.waiting() < num_threads) {}
+	sync.sync();
 
 #ifdef BENCHMARK
 	auto const t1 = std::chrono::high_resolution_clock::now();
@@ -73,15 +74,11 @@ int main()
 #else
 	while (true) {
 #endif
-		barrier.release();
-
 #ifndef BENCHMARK
 		display.load(grid);
 		display.display(stdout_handle);
 #endif
-
-		barrier.wait_for(threads.size());
-		grid.load_next();
+		sync.sync([&grid]() { grid.load_next(); });
 	}
 
 #ifdef BENCHMARK
@@ -105,8 +102,7 @@ int main()
 		std::chrono::duration_cast<std::chrono::duration<double, std::nano>>(cpu_time_per_cell).count() << "ns" << std::endl;
 #endif
 
-	exit = true;
-	barrier.release();
+	sync.sync([&exit]() { exit = true; });
 	
 	for (auto& t : threads) {
 		t.join();

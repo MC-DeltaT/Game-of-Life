@@ -5,30 +5,40 @@
 #include <vector>
 
 
-void thread_barrier::wait()
+thread_sync::thread_sync() :
+	_data(new sync_data{})
 {
-	++_count1;
-	while (_count1 > 0) {}
-	++_count2;
-	while (_count2 > 0) {}
+	_data->count1 = 0;
+	_data->count2 = 0;
 }
 
-void thread_barrier::wait_for(std::size_t count)
+thread_sync::thread_sync(thread_sync const& other)
 {
-	while (_count1 < count) {}
-	_count1 = 0;
-	while (_count2 < count) {}
+	debug_assert(other._data->count2 == 0);
+	_data = other._data;
 }
 
-void thread_barrier::release()
+
+void thread_sync::sync()
 {
-	_count2 = 0;
+	_single_sync(_data->count1);
+	_single_sync(_data->count2);
 }
 
-void thread_barrier::sync_with(std::size_t count)
+std::size_t thread_sync::waiting()
 {
-	wait_for(count);
-	release();
+	return _data->count1;
+}
+
+void thread_sync::_single_sync(std::atomic_size_t& count)
+{
+	bool last_thread = ++count == _data.use_count();
+	if (last_thread) {
+		count = 0;
+	}
+	else {
+		while (count > 0) {}
+	}
 }
 
 

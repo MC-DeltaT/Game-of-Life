@@ -3,21 +3,39 @@
 #include <atomic>
 #include <cassert>
 #include <cstddef>
+#include <memory>
 #include <utility>
 #include <vector>
 
 
-class thread_barrier {
+class thread_sync {
 public:
-	void wait();
-	void wait_for(std::size_t count);
-	void release();
-	void sync_with(std::size_t count);
+	thread_sync();
+	thread_sync(thread_sync const& other);
+
+	void sync();
+	template<typename Callable>
+	void sync(Callable on_sync);
+	std::size_t waiting();
 
 private:
-	std::atomic_size_t _count1 = 0;
-	std::atomic_size_t _count2 = 0;
+	struct sync_data {
+		std::atomic_size_t count1;
+		std::atomic_size_t count2;
+	};
+
+	std::shared_ptr<sync_data> _data;
+
+	void _single_sync(std::atomic_size_t& count);
 };
+
+template<typename Callable>
+inline void thread_sync::sync(Callable on_sync)
+{
+	_single_sync(_data->count1);
+	on_sync();
+	_single_sync(_data->count2);
+}
 
 
 __forceinline void debug_assert(bool b)
