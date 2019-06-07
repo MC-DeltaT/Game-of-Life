@@ -140,7 +140,15 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="console.cpp" />
+    <ClCompile Include="grid.cpp" />
     <ClCompile Include="main.cpp" />
+    <ClCompile Include="utility.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="console.hpp" />
+    <ClInclude Include="grid.hpp" />
+    <ClInclude Include="utility.hpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
