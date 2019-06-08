@@ -151,6 +151,10 @@
     <ClInclude Include="grid.hpp" />
     <ClInclude Include="utility.hpp" />
   </ItemGroup>
+  <ItemGroup>
+    <None Include="execution.tpp" />
+    <None Include="utility.tpp" />
+  </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
   </ImportGroup>

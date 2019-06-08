@@ -31,14 +31,6 @@ private:
 	void _single_sync(std::atomic_size_t& count);
 };
 
-template<typename Callable>
-inline void thread_sync::sync(Callable on_sync)
-{
-	_single_sync(_data->count1);
-	on_sync();
-	_single_sync(_data->count2);
-}
-
 
 __forceinline void debug_assert(bool b)
 {
@@ -50,3 +42,6 @@ __forceinline void debug_assert(bool b)
 std::pair<std::size_t, std::size_t> get_console_size(HANDLE console_handle);
 
 std::vector<std::pair<std::size_t, std::size_t>> partition(std::size_t val, std::size_t partitions);
+
+
+#include "utility.tpp"
