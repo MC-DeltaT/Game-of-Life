@@ -18,7 +18,7 @@ public:
 	void sync();
 	template<typename Callable>
 	void sync(Callable on_sync);
-	std::size_t waiting();
+	void wait_for(std::size_t count);
 
 private:
 	struct sync_data {

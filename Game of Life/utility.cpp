@@ -27,9 +27,9 @@ void thread_sync::sync()
 	_single_sync(_data->count2);
 }
 
-std::size_t thread_sync::waiting()
+void thread_sync::wait_for(std::size_t count)
 {
-	return _data->count1;
+	while (_data->count1 < count) {}
 }
 
 void thread_sync::_single_sync(std::atomic_size_t& count)

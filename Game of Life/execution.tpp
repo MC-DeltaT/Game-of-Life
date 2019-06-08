@@ -47,7 +47,7 @@ multi_thread_executor<Renderer>::multi_thread_executor(std::size_t num_threads, 
 		for (std::size_t i = 1; i < _partitions.size(); ++i) {
 			_threads.emplace_back(&multi_thread_executor::_thread_func, this, i);
 		}
-		while (_sync.waiting() < _threads.size()) {}
+		_sync.wait_for(_threads.size());
 	}
 }
 
@@ -59,7 +59,7 @@ void multi_thread_executor<Renderer>::render_and_update()
 	}
 	_render_and_update(0);
 	if (_threads.size() >= 1) {
-		while (_sync.waiting() < _threads.size()) {}
+		_sync.wait_for(_threads.size());
 	}
 }
 
