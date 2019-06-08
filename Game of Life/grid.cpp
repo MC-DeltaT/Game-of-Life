@@ -14,9 +14,9 @@ game_grid::game_grid(std::size_t rows, std::size_t cols) :
 	_rows(rows),
 	_cols(cols),
 	_size(rows * cols),
-	_curr(new bool[rows * cols]),
-	_next(new bool[rows * cols]),
-	_neighbour_lut(rows* cols)
+	_curr(new bool[rows * cols]{}),
+	_next(new bool[rows * cols]{}),
+	_neighbour_lut(rows * cols)
 {
 	auto wrap = [this](std::ptrdiff_t i, std::ptrdiff_t j) {
 		auto wrap = [](std::ptrdiff_t x, std::size_t bound) {
@@ -74,7 +74,7 @@ std::size_t game_grid::size() const
 void game_grid::rand_init()
 {
 	static std::default_random_engine rand_eng(std::chrono::system_clock::now().time_since_epoch().count());
-	std::generate_n(_curr.get(), _rows * _cols, []() {return rand_eng() & 1u; });
+	std::generate_n(_curr.get(), _rows * _cols, []() { return rand_eng() & 1u; });
 }
 
 bool game_grid::curr_state(std::size_t i) const

@@ -40,7 +40,7 @@ void console_renderer::render_all()
 	}
 }
 
-void console_renderer::draw()
+void console_renderer::draw() const
 {
 	SetConsoleCursorPosition(_console_handle, COORD{0, 0});
 	DWORD written;

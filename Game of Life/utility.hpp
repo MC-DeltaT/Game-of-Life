@@ -16,8 +16,8 @@ public:
 	thread_sync(thread_sync const& other);
 
 	void sync();
-	template<typename Callable>
-	void sync(Callable on_sync);
+	template<typename Function>
+	void sync(Function on_sync);
 	void wait_for(std::size_t count);
 
 private:

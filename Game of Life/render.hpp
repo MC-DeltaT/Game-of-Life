@@ -14,7 +14,7 @@ public:
 
 	void render(std::size_t grid_idx);
 	void render_all();
-	void draw();
+	void draw() const;
 
 private:
 	static inline constexpr char live_cell = 'x';

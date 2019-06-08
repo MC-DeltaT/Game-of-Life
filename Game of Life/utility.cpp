@@ -63,7 +63,7 @@ std::vector<std::pair<std::size_t, std::size_t>> partition(std::size_t val, std:
 		res.reserve(actual_partitions);
 		std::size_t offset = 0;
 		for (std::size_t i = 0; i < actual_partitions; ++i) {
-			std::size_t extra = mod > 0 ? 1 : 0;
+			std::size_t extra = mod > 0;
 			res.emplace_back(offset, div + extra);
 			offset += div + extra;
 			mod -= extra;
