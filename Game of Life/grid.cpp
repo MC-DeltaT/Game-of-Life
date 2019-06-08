@@ -13,6 +13,7 @@
 game_grid::game_grid(std::size_t rows, std::size_t cols) :
 	_rows(rows),
 	_cols(cols),
+	_size(rows * cols),
 	_curr(new bool[rows * cols]),
 	_next(new bool[rows * cols]),
 	_neighbour_lut(rows* cols)
@@ -63,6 +64,11 @@ std::size_t game_grid::rows() const
 std::size_t game_grid::cols() const
 {
 	return _cols;
+}
+
+std::size_t game_grid::size() const
+{
+	return _size;
 }
 
 void game_grid::rand_init()

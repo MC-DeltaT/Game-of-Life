@@ -3,6 +3,8 @@
 #include <cstddef>
 #include <utility>
 #include <vector>
+#define NOMINMAX
+#include <Windows.h>
 
 
 thread_sync::thread_sync() :
@@ -41,6 +43,14 @@ void thread_sync::_single_sync(std::atomic_size_t& count)
 	}
 }
 
+
+std::pair<std::size_t, std::size_t> get_console_size(HANDLE console_handle)
+{
+	CONSOLE_SCREEN_BUFFER_INFO csbi{};
+	debug_assert(GetConsoleScreenBufferInfo(console_handle, &csbi));
+	return {csbi.srWindow.Bottom - csbi.srWindow.Top,
+			csbi.srWindow.Right - csbi.srWindow.Left};
+}
 
 std::vector<std::pair<std::size_t, std::size_t>> partition(std::size_t val, std::size_t partitions)
 {

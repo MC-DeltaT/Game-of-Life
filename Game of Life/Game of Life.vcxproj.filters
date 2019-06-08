@@ -24,7 +24,7 @@
     <ClCompile Include="grid.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="console.cpp">
+    <ClCompile Include="render.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -35,7 +35,10 @@
     <ClInclude Include="grid.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
-    <ClInclude Include="console.hpp">
+    <ClInclude Include="execution.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="render.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

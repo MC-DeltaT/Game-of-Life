@@ -1,14 +1,12 @@
-#include "console.hpp"
+#include "execution.hpp"
 #include "grid.hpp"
+#include "render.hpp"
 #include "utility.hpp"
 
 #include <chrono>
 #include <cstddef>
-#include <functional>
 #include <iostream>
 #include <ratio>
-#include <thread>
-#include <vector>
 #define NOMINMAX
 #include <Windows.h>
 
@@ -19,23 +17,9 @@
 #define BENCHMARK_ITERATIONS 1000000ull
 
 
-void update_thread(bool& exit, thread_sync sync, game_grid& grid, std::size_t offset, std::size_t count)
-{
-	while (!exit) {
-		sync.sync();
-		if (exit) {
-			break;
-		}
-		for (std::size_t i = offset; i < offset + count; ++i) {
-			grid.update_next(i);
-		}
-	}
-}
-
-
 int main()
 {
-	constexpr std::size_t num_threads = 3;
+	constexpr std::size_t num_threads = 4;
 
 #ifdef BENCHMARK
 	constexpr std::size_t rows = BENCHMARK_ROWS;
@@ -50,23 +34,18 @@ int main()
 #else
 	HANDLE const stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
 	auto const [rows, cols] = get_console_size(stdout_handle);
-	grid_console_display display(rows, cols);
 #endif
 
 	game_grid grid(rows, cols);
 	grid.rand_init();
 
-	auto partitions = partition(rows * cols, num_threads);
-	std::vector<std::thread> threads;
-	threads.reserve(partitions.size());
-	thread_sync sync;
-	bool exit = false;
-	for (auto const& p : partitions) {
-		threads.emplace_back(update_thread, std::ref(exit), std::ref(sync), std::ref(grid), p.first, p.second);
-	}
+#ifdef BENCHMARK
+	null_renderer renderer{};
+#else
+	console_renderer renderer(grid, stdout_handle);
+#endif
 
-	while (sync.waiting() < num_threads) {}
-	sync.sync();
+	multi_thread_executor executor(num_threads, grid, renderer);
 
 #ifdef BENCHMARK
 	auto const t1 = std::chrono::high_resolution_clock::now();
@@ -74,11 +53,9 @@ int main()
 #else
 	while (true) {
 #endif
-#ifndef BENCHMARK
-		display.load(grid);
-		display.display(stdout_handle);
-#endif
-		sync.sync([&grid]() { grid.load_next(); });
+		executor.update_and_render();
+		renderer.draw();
+		grid.load_next();
 	}
 
 #ifdef BENCHMARK
@@ -101,10 +78,4 @@ int main()
 	std::cout << "CPU time per cell update: " <<
 		std::chrono::duration_cast<std::chrono::duration<double, std::nano>>(cpu_time_per_cell).count() << "ns" << std::endl;
 #endif
-
-	sync.sync([&exit]() { exit = true; });
-	
-	for (auto& t : threads) {
-		t.join();
-	}
 }

@@ -13,6 +13,7 @@ public:
 
 	std::size_t rows() const;
 	std::size_t cols() const;
+	std::size_t size() const;
 
 	void rand_init();
 	bool curr_state(std::size_t i) const;
@@ -28,6 +29,7 @@ private:
 
 	std::size_t _rows;
 	std::size_t _cols;
+	std::size_t _size;
 	std::unique_ptr<bool[]> _curr;
 	std::unique_ptr<bool[]> _next;
 	std::vector<std::array<std::size_t, _neighbour_offsets.size()>> _neighbour_lut;

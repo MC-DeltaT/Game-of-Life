@@ -6,6 +6,8 @@
 #include <memory>
 #include <utility>
 #include <vector>
+#define NOMINMAX
+#include <Windows.h>
 
 
 class thread_sync {
@@ -44,5 +46,7 @@ __forceinline void debug_assert(bool b)
 	assert(b);
 #endif
 }
+
+std::pair<std::size_t, std::size_t> get_console_size(HANDLE console_handle);
 
 std::vector<std::pair<std::size_t, std::size_t>> partition(std::size_t val, std::size_t partitions);
