@@ -13,12 +13,12 @@ single_thread_executor<Renderer>::single_thread_executor(game_grid& grid, Render
 {}
 
 template<class Renderer>
-void single_thread_executor<Renderer>::update_and_render()
+void single_thread_executor<Renderer>::render_and_update()
 {
+	_renderer->render_all();
 	for (std::size_t i = 0; i < _grid->size(); ++i) {
 		_grid->update_next(i);
 	}
-	_renderer->render_all();
 }
 
 
@@ -52,24 +52,24 @@ multi_thread_executor<Renderer>::multi_thread_executor(std::size_t num_threads, 
 }
 
 template<class Renderer>
-void multi_thread_executor<Renderer>::update_and_render()
+void multi_thread_executor<Renderer>::render_and_update()
 {
 	if (_threads.size() >= 1) {
 		_sync.sync();
 	}
-	_update_and_render(0);
+	_render_and_update(0);
 	if (_threads.size() >= 1) {
 		while (_sync.waiting() < _threads.size()) {}
 	}
 }
 
 template<class Renderer>
-void multi_thread_executor<Renderer>::_update_and_render(std::size_t thread_idx)
+void multi_thread_executor<Renderer>::_render_and_update(std::size_t thread_idx)
 {
 	auto const& partition = _partitions[thread_idx];
 	for (std::size_t i = partition.first; i < partition.first + partition.second; ++i) {
-		_grid->update_next(i);
 		_renderer->render(i);
+		_grid->update_next(i);
 	}
 }
 
@@ -83,6 +83,6 @@ void multi_thread_executor<Renderer>::_thread_func(std::size_t thread_idx)
 		if (_exit) {
 			break;
 		}
-		_update_and_render(thread_idx);
+		_render_and_update(thread_idx);
 	}
 }

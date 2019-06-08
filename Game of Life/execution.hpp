@@ -14,7 +14,7 @@ class single_thread_executor {
 public:
 	single_thread_executor(game_grid& grid, Renderer& renderer);
 
-	void update_and_render();
+	void render_and_update();
 
 private:
 	game_grid* _grid;
@@ -27,7 +27,7 @@ public:
 	~multi_thread_executor();
 	multi_thread_executor(std::size_t num_threads, game_grid& grid, Renderer& renderer);
 
-	void update_and_render();
+	void render_and_update();
 
 private:
 	game_grid* _grid;
@@ -37,7 +37,7 @@ private:
 	thread_sync _sync;
 	bool _exit;
 
-	void _update_and_render(std::size_t thread_idx);
+	void _render_and_update(std::size_t thread_idx);
 	void _thread_func(std::size_t thread_idx);
 };
 

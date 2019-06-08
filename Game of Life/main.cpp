@@ -53,7 +53,7 @@ int main()
 #else
 	while (true) {
 #endif
-		executor.update_and_render();
+		executor.render_and_update();
 		renderer.draw();
 		grid.load_next();
 	}
