@@ -1,11 +1,11 @@
 #pragma once
 
+#include <array>
 #include <atomic>
 #include <cassert>
 #include <cstddef>
 #include <memory>
 #include <utility>
-#include <vector>
 #define NOMINMAX
 #include <Windows.h>
 
@@ -41,7 +41,8 @@ __forceinline void debug_assert(bool b)
 
 std::pair<std::size_t, std::size_t> get_console_size(HANDLE console_handle);
 
-std::vector<std::pair<std::size_t, std::size_t>> partition(std::size_t val, std::size_t partitions);
+template<std::size_t NumPartitions>
+constexpr std::array<std::pair<std::size_t, std::size_t>, NumPartitions> partition(std::size_t val);
 
 
 #include "utility.tpp"

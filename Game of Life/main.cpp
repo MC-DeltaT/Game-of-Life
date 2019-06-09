@@ -46,7 +46,7 @@ int main()
 	console_renderer renderer(grid, stdout_handle);
 #endif
 
-	multi_thread_executor executor(num_threads, grid, renderer);
+	cpu_executor<decltype(renderer), num_threads> executor(grid, renderer);
 
 #ifdef BENCHMARK
 	auto const t1 = std::chrono::high_resolution_clock::now();
