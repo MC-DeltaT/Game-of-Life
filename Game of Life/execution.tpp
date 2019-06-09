@@ -66,9 +66,14 @@ void multi_thread_executor<Renderer>::render_and_update()
 template<class Renderer>
 void multi_thread_executor<Renderer>::_render_and_update(std::size_t thread_idx)
 {
-	auto const& partition = _partitions[thread_idx];
-	for (std::size_t i = partition.first; i < partition.first + partition.second; ++i) {
+	thread_local auto const& partition = _partitions[thread_idx];
+	thread_local auto const begin = partition.first;
+	thread_local auto const end = partition.first + partition.second;
+
+	for (std::size_t i = begin; i != end; ++i) {
 		_renderer->render(i);
+	}
+	for (std::size_t i = begin; i != end; ++i) {
 		_grid->update_next(i);
 	}
 }
@@ -78,7 +83,7 @@ void multi_thread_executor<Renderer>::_thread_func(std::size_t thread_idx)
 {
 	debug_assert(thread_idx >= 1);
 	thread_sync sync(_sync);
-	while (!_exit) {
+	while (true) {
 		sync.sync();
 		if (_exit) {
 			break;
