@@ -17,7 +17,7 @@ constexpr std::size_t benchmark_cols = 100;
 constexpr std::size_t benchmark_iterations = 1000000ull;
 
 
-constexpr std::size_t num_threads = 4;
+constexpr std::size_t num_threads = 3;
 
 
 int main()
