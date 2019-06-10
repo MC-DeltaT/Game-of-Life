@@ -7,15 +7,6 @@
 #include <utility>
 
 
-template<typename Function>
-inline void thread_sync::sync(Function on_sync)
-{
-	_single_sync(_data->count1);
-	on_sync();
-	_single_sync(_data->count2);
-}
-
-
 template<std::size_t NumPartitions>
 constexpr std::array<std::pair<std::size_t, std::size_t>, NumPartitions> partition(std::size_t val)
 {

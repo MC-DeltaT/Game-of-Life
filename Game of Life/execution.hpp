@@ -1,9 +1,9 @@
 #pragma once
 
 #include "grid.hpp"
-#include "utility.hpp"
 
 #include <array>
+#include <atomic>
 #include <cstddef>
 #include <thread>
 #include <utility>
@@ -22,7 +22,8 @@ private:
 	Renderer* _renderer;
 	std::array<std::thread, NumThreads - 1> _threads;
 	std::array<std::pair<std::size_t, std::size_t>, NumThreads> _partitions;
-	thread_sync _sync;
+	std::atomic_size_t _sync1;
+	std::atomic_size_t _sync2;
 	bool _exit;
 
 	void _render_and_update(std::size_t thread_idx);
