@@ -7,14 +7,14 @@
 #include <thread>
 
 
-template<class Renderer>
-cpu_executor<Renderer, 1>::cpu_executor(game_grid& grid, Renderer& renderer) :
+template<std::size_t Rows, std::size_t Cols, class Renderer>
+cpu_executor<Rows, Cols, Renderer, 1>::cpu_executor(game_grid<Rows, Cols>& grid, Renderer& renderer) :
 	_grid(&grid),
 	_renderer(&renderer)
 {}
 
-template<class Renderer>
-void cpu_executor<Renderer, 1>::render_and_update()
+template<std::size_t Rows, std::size_t Cols, class Renderer>
+void cpu_executor<Rows, Cols, Renderer, 1>::render_and_update()
 {
 	_renderer->render_all();
 	for (std::size_t i = 0; i < _grid->size(); ++i) {
@@ -23,8 +23,8 @@ void cpu_executor<Renderer, 1>::render_and_update()
 }
 
 
-template<class Renderer, std::size_t NumThreads>
-cpu_executor<Renderer, NumThreads>::~cpu_executor()
+template<std::size_t Rows, std::size_t Cols, class Renderer, std::size_t NumThreads>
+cpu_executor<Rows, Cols, Renderer, NumThreads>::~cpu_executor()
 {
 	_sync1 = 0;
 	while (_sync2 != _threads.size()) {}
@@ -36,8 +36,8 @@ cpu_executor<Renderer, NumThreads>::~cpu_executor()
 	}
 }
 
-template<class Renderer, std::size_t NumThreads>
-cpu_executor<Renderer, NumThreads>::cpu_executor(game_grid& grid, Renderer& renderer) :
+template<std::size_t Rows, std::size_t Cols, class Renderer, std::size_t NumThreads>
+cpu_executor<Rows, Cols, Renderer, NumThreads>::cpu_executor(game_grid<Rows, Cols>& grid, Renderer& renderer) :
 	_grid(&grid),
 	_renderer(&renderer),
 	_partitions(partition<NumThreads>(grid.size())),
@@ -51,8 +51,8 @@ cpu_executor<Renderer, NumThreads>::cpu_executor(game_grid& grid, Renderer& rend
 	while (_sync1 != _threads.size()) {}
 }
 
-template<class Renderer, std::size_t NumThreads>
-void cpu_executor<Renderer, NumThreads>::render_and_update()
+template<std::size_t Rows, std::size_t Cols, class Renderer, std::size_t NumThreads>
+void cpu_executor<Rows, Cols, Renderer, NumThreads>::render_and_update()
 {
 	_sync1 = 0;
 	while (_sync2 != _threads.size()) {}
@@ -63,12 +63,12 @@ void cpu_executor<Renderer, NumThreads>::render_and_update()
 	while (_sync1 != _threads.size()) {}
 }
 
-template<class Renderer, std::size_t NumThreads>
-void cpu_executor<Renderer, NumThreads>::_render_and_update(std::size_t thread_idx)
+template<std::size_t Rows, std::size_t Cols, class Renderer, std::size_t NumThreads>
+void cpu_executor<Rows, Cols, Renderer, NumThreads>::_render_and_update(std::size_t thread_idx)
 {
-	thread_local auto const& partition = _partitions[thread_idx];
-	thread_local auto const begin = partition.first;
-	thread_local auto const end = partition.first + partition.second;
+	auto const& partition = _partitions[thread_idx];
+	auto const begin = partition.first;
+	auto const end = partition.first + partition.second;
 
 	for (std::size_t i = begin; i != end; ++i) {
 		_renderer->render(i);
@@ -78,8 +78,8 @@ void cpu_executor<Renderer, NumThreads>::_render_and_update(std::size_t thread_i
 	}
 }
 
-template<class Renderer, std::size_t NumThreads>
-void cpu_executor<Renderer, NumThreads>::_thread_func(std::size_t thread_idx)
+template<std::size_t Rows, std::size_t Cols, class Renderer, std::size_t NumThreads>
+void cpu_executor<Rows, Cols, Renderer, NumThreads>::_thread_func(std::size_t thread_idx)
 {
 	debug_assert(thread_idx >= 1);
 

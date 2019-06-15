@@ -12,20 +12,17 @@
 
 
 #define BENCHMARK
-constexpr std::size_t benchmark_rows = 100;
-constexpr std::size_t benchmark_cols = 100;
 constexpr std::size_t benchmark_iterations = 1000000ull;
 
 
+constexpr std::size_t rows = 100;
+constexpr std::size_t cols = 100;
 constexpr std::size_t num_threads = 3;
 
 
 int main()
 {
 #ifdef BENCHMARK
-	constexpr std::size_t rows = benchmark_rows;
-	constexpr std::size_t cols = benchmark_cols;
-
 	std::cout << "Rows: " << rows << std::endl;
 	std::cout << "Columns: " << cols << std::endl;
 	std::cout << "Cells: " << rows * cols << std::endl;
@@ -34,10 +31,10 @@ int main()
 	std::cout << "Threads: " << num_threads << std::endl;
 #else
 	HANDLE const stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
-	auto const [rows, cols] = get_console_size(stdout_handle);
+	set_console_size(stdout_handle, rows, cols);
 #endif
 
-	game_grid grid(rows, cols);
+	game_grid<rows, cols> grid;
 	grid.rand_init();
 
 #ifdef BENCHMARK
@@ -46,7 +43,7 @@ int main()
 	console_renderer renderer(grid, stdout_handle);
 #endif
 
-	cpu_executor<decltype(renderer), num_threads> executor(grid, renderer);
+	cpu_executor<rows, cols, decltype(renderer), num_threads> executor(grid, renderer);
 
 #ifdef BENCHMARK
 	auto const t1 = std::chrono::high_resolution_clock::now();

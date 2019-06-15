@@ -7,13 +7,14 @@
 #include <vector>
 
 
+template<std::size_t Rows, std::size_t Cols>
 class game_grid {
 public:
-	game_grid(std::size_t rows, std::size_t cols);
+	game_grid();
 
-	std::size_t rows() const;
-	std::size_t cols() const;
-	std::size_t size() const;
+	constexpr std::size_t rows() const;
+	constexpr std::size_t cols() const;
+	constexpr std::size_t size() const;
 
 	void rand_init();
 	bool curr_state(std::size_t i) const;
@@ -21,15 +22,12 @@ public:
 	void load_next();
 
 private:
-	static constexpr std::array<std::pair<std::ptrdiff_t, std::ptrdiff_t>, 8> _neighbour_offsets{
+	static inline constexpr std::array<std::pair<std::ptrdiff_t, std::ptrdiff_t>, 8> _neighbour_offsets{
 		std::pair{-1, -1}, std::pair{-1, 0}, std::pair{-1, 1},
 		std::pair{0, -1},					 std::pair{0, 1},
 		std::pair{1, -1},  std::pair{1, 0},  std::pair{1, 1}
 	};
 
-	std::size_t _rows;
-	std::size_t _cols;
-	std::size_t _size;
 	std::unique_ptr<bool[]> _curr;
 	std::unique_ptr<bool[]> _next;
 	std::vector<std::array<std::size_t, _neighbour_offsets.size()>> _neighbour_lut;
@@ -38,3 +36,6 @@ private:
 
 	bool _next_state(std::size_t i) const;
 };
+
+
+#include "grid.tpp"

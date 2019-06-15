@@ -1,15 +1,16 @@
 #include "utility.hpp"
 
 #include <cstddef>
-#include <utility>
+#include <cstdlib>
+#include <string>
 #define NOMINMAX
 #include <Windows.h>
 
 
-std::pair<std::size_t, std::size_t> get_console_size(HANDLE console_handle)
+void set_console_size(HANDLE console_handle, std::size_t rows, std::size_t cols)
 {
-	CONSOLE_SCREEN_BUFFER_INFO csbi{};
-	debug_assert(GetConsoleScreenBufferInfo(console_handle, &csbi));
-	return {csbi.srWindow.Bottom - csbi.srWindow.Top,
-			csbi.srWindow.Right - csbi.srWindow.Left};
+	auto rows_str = std::to_string(rows + 1);
+	auto cols_str = std::to_string(cols + 1);
+	auto str = "mode con cols=" + cols_str + " lines=" + rows_str;
+	std::system(str.c_str());
 }

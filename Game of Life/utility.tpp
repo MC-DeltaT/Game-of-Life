@@ -1,7 +1,5 @@
 #pragma once
 
-#include "utility.hpp"
-
 #include <array>
 #include <cstddef>
 #include <utility>

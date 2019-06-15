@@ -15,10 +15,10 @@ __forceinline void debug_assert(bool b)
 #endif
 }
 
-std::pair<std::size_t, std::size_t> get_console_size(HANDLE console_handle);
-
 template<std::size_t NumPartitions>
 constexpr std::array<std::pair<std::size_t, std::size_t>, NumPartitions> partition(std::size_t val);
+
+void set_console_size(HANDLE console_handle, std::size_t rows, std::size_t cols);
 
 
 #include "utility.tpp"

@@ -24,12 +24,6 @@
     <ClCompile Include="utility.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="grid.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
-    <ClCompile Include="render.cpp">
-      <Filter>Source Files</Filter>
-    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="utility.hpp">
@@ -50,6 +44,12 @@
       <Filter>Template Files</Filter>
     </None>
     <None Include="execution.tpp">
+      <Filter>Template Files</Filter>
+    </None>
+    <None Include="grid.tpp">
+      <Filter>Template Files</Filter>
+    </None>
+    <None Include="render.tpp">
       <Filter>Template Files</Filter>
     </None>
   </ItemGroup>

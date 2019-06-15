@@ -1,4 +1,4 @@
-#include "grid.hpp"
+#pragma once
 
 #include "utility.hpp"
 
@@ -10,13 +10,11 @@
 #include <utility>
 
 
-game_grid::game_grid(std::size_t rows, std::size_t cols) :
-	_rows(rows),
-	_cols(cols),
-	_size(rows * cols),
-	_curr(new bool[rows * cols]{}),
-	_next(new bool[rows * cols]{}),
-	_neighbour_lut(rows * cols)
+template<std::size_t Rows, std::size_t Cols>
+game_grid<Rows, Cols>::game_grid() :
+	_curr(new bool[Rows * Cols]{}),
+	_next(new bool[Rows * Cols]{}),
+	_neighbour_lut(Rows * Cols)
 {
 	auto wrap = [this](std::ptrdiff_t i, std::ptrdiff_t j) {
 		auto wrap = [](std::ptrdiff_t x, std::size_t bound) {
@@ -34,17 +32,17 @@ game_grid::game_grid(std::size_t rows, std::size_t cols) :
 			return res;
 		};
 
-		return std::pair{wrap(i, _rows), wrap(j, _cols)};
+		return std::pair{wrap(i, Rows), wrap(j, Cols)};
 	};
 
 	auto to_idx = [this](std::size_t i, std::size_t j) {
-		return (i * _cols) + j;
+		return (i * Cols) + j;
 	};
 
-	debug_assert(_rows < std::numeric_limits<std::ptrdiff_t>::max());
-	debug_assert(_cols < std::numeric_limits<std::ptrdiff_t>::max());
-	for (std::ptrdiff_t i = 0; i < _rows; ++i) {
-		for (std::ptrdiff_t j = 0; j < _cols; ++j) {
+	static_assert(Rows < std::numeric_limits<std::ptrdiff_t>::max());
+	static_assert(Cols < std::numeric_limits<std::ptrdiff_t>::max());
+	for (std::ptrdiff_t i = 0; i < Rows; ++i) {
+		for (std::ptrdiff_t j = 0; j < Cols; ++j) {
 			std::size_t const cell_idx = to_idx(i, j);
 			for (std::size_t n = 0; n < _neighbour_offsets.size(); ++n) {
 				auto const [offset_i, offset_j] = _neighbour_offsets[n];
@@ -56,46 +54,54 @@ game_grid::game_grid(std::size_t rows, std::size_t cols) :
 	}
 }
 
-std::size_t game_grid::rows() const
+template<std::size_t Rows, std::size_t Cols>
+constexpr std::size_t game_grid<Rows, Cols>::rows() const
 {
-	return _rows;
+	return Rows;
 }
 
-std::size_t game_grid::cols() const
+template<std::size_t Rows, std::size_t Cols>
+constexpr std::size_t game_grid<Rows, Cols>::cols() const
 {
-	return _cols;
+	return Cols;
 }
 
-std::size_t game_grid::size() const
+template<std::size_t Rows, std::size_t Cols>
+constexpr std::size_t game_grid<Rows, Cols>::size() const
 {
-	return _size;
+	return Rows * Cols;
 }
 
-void game_grid::rand_init()
+template<std::size_t Rows, std::size_t Cols>
+void game_grid<Rows, Cols>::rand_init()
 {
 	static std::default_random_engine rand_eng(std::chrono::system_clock::now().time_since_epoch().count());
-	std::generate_n(_curr.get(), _rows * _cols, []() { return rand_eng() & 1u; });
+	std::generate_n(_curr.get(), Rows * Cols, []() { return rand_eng() & 1u; });
 }
 
-bool game_grid::curr_state(std::size_t i) const
+template<std::size_t Rows, std::size_t Cols>
+bool game_grid<Rows, Cols>::curr_state(std::size_t i) const
 {
 	return _curr[i];
 }
 
-bool game_grid::update_next(std::size_t i)
+template<std::size_t Rows, std::size_t Cols>
+bool game_grid<Rows, Cols>::update_next(std::size_t i)
 {
 	bool const next = _next_state(i);
 	_next[i] = next;
 	return next;
 }
 
-void game_grid::load_next()
+template<std::size_t Rows, std::size_t Cols>
+void game_grid<Rows, Cols>::load_next()
 {
 	swap(_curr, _next);
 }
 
 
-unsigned game_grid::_count_neighbours(std::size_t i) const
+template<std::size_t Rows, std::size_t Cols>
+unsigned game_grid<Rows, Cols>::_count_neighbours(std::size_t i) const
 {
 	unsigned neighbours = 0;
 	for (auto offset : _neighbour_lut[i]) {
@@ -104,7 +110,8 @@ unsigned game_grid::_count_neighbours(std::size_t i) const
 	return neighbours;
 }
 
-bool game_grid::_next_state(std::size_t i) const
+template<std::size_t Rows, std::size_t Cols>
+bool game_grid<Rows, Cols>::_next_state(std::size_t i) const
 {
 	unsigned const neighbours = _count_neighbours(i);
 	bool const curr_state = _curr[i];
