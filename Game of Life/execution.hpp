@@ -27,8 +27,12 @@ private:
 	std::atomic_size_t _sync2;
 	bool _exit;
 
-	void _render_and_update(std::size_t thread_idx);
-	void _thread_func(std::size_t thread_idx);
+	template<std::size_t Idx>
+	void _start_threads(std::array<std::thread, NumThreads - 1>& threads);
+	template<std::size_t ThreadIdx>
+	void _render_and_update();
+	template<std::size_t ThreadIdx>
+	void _thread_func();
 };
 
 template<class GameGrid, class StateUpdater, class Renderer>

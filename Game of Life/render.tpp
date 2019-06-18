@@ -46,7 +46,7 @@ void console_renderer<GameGrid>::draw() const
 {
 	SetConsoleCursorPosition(_console_handle, COORD{0, 0});
 	DWORD written;
-	debug_assert(_buf_size < std::numeric_limits<DWORD>::max());
+	static_assert(_buf_size < std::numeric_limits<DWORD>::max());
 	debug_assert(WriteConsoleA(_console_handle, _data.data(), static_cast<DWORD>(_buf_size), &written, NULL));
 	debug_assert(written == _buf_size);
 }

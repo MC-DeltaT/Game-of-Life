@@ -1,7 +1,6 @@
 #pragma once
 
-#include "utility.hpp"
-
+#include <array>
 #include <cstddef>
 #include <thread>
 
@@ -28,9 +27,7 @@ cpu_executor<GameGrid, StateUpdater, Renderer, NumThreads>::cpu_executor(GameGri
 	_sync2(0),
 	_exit(false)
 {
-	for (std::size_t i = 0; i < NumThreads - 1; ++i) {
-		_threads[i] = std::thread(&cpu_executor::_thread_func, this, i + 1);
-	}
+	_start_threads<0>(_threads);
 	while (_sync1 != _threads.size()) {}
 }
 
@@ -41,17 +38,18 @@ void cpu_executor<GameGrid, StateUpdater, Renderer, NumThreads>::render_and_upda
 	while (_sync2 != _threads.size()) {}
 	_sync2 = 0;
 
-	_render_and_update(0);
+	_render_and_update<0>();
 
 	while (_sync1 != _threads.size()) {}
 }
 
 template<class GameGrid, class StateUpdater, class Renderer, std::size_t NumThreads>
-void cpu_executor<GameGrid, StateUpdater, Renderer, NumThreads>::_render_and_update(std::size_t thread_idx)
+template<std::size_t ThreadIdx>
+void cpu_executor<GameGrid, StateUpdater, Renderer, NumThreads>::_render_and_update()
 {
-	auto const& partition = _partitions[thread_idx];
-	auto const begin = partition.first;
-	auto const end = partition.first + partition.second;
+	constexpr auto& partition = std::get<ThreadIdx>(_partitions);
+	constexpr auto begin = partition.first;
+	constexpr auto end = partition.first + partition.second;
 
 	for (std::size_t i = begin; i != end; ++i) {
 		_renderer->render(i);
@@ -62,9 +60,20 @@ void cpu_executor<GameGrid, StateUpdater, Renderer, NumThreads>::_render_and_upd
 }
 
 template<class GameGrid, class StateUpdater, class Renderer, std::size_t NumThreads>
-void cpu_executor<GameGrid, StateUpdater, Renderer, NumThreads>::_thread_func(std::size_t thread_idx)
+template<std::size_t Idx>
+void cpu_executor<GameGrid, StateUpdater, Renderer, NumThreads>::_start_threads(std::array<std::thread, NumThreads - 1>& threads)
 {
-	debug_assert(thread_idx >= 1);
+	if constexpr (Idx < NumThreads - 1) {
+		std::get<Idx>(threads) = std::thread(&cpu_executor::_thread_func<Idx + 1>, this);
+		_start_threads<Idx + 1>(threads);
+	}
+}
+
+template<class GameGrid, class StateUpdater, class Renderer, std::size_t NumThreads>
+template<std::size_t ThreadIdx>
+void cpu_executor<GameGrid, StateUpdater, Renderer, NumThreads>::_thread_func()
+{
+	static_assert(ThreadIdx >= 1);
 
 	while (true) {
 		++_sync1;
@@ -76,7 +85,7 @@ void cpu_executor<GameGrid, StateUpdater, Renderer, NumThreads>::_thread_func(st
 			break;
 		}
 
-		_render_and_update(thread_idx);
+		_render_and_update<ThreadIdx>();
 	}
 }
 

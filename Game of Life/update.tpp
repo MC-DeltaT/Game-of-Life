@@ -34,7 +34,7 @@ std::uint8_t state_updater<GameGrid>::_count_neighbours(std::size_t grid_idx) co
 	static_assert(GameGrid::neighbour_count <= std::numeric_limits<std::uint8_t>::max());
 
 	std::uint8_t neighbours = 0;
-	for (auto idx : _neighbour_lut[grid_idx]) {
+	for (auto const idx : _neighbour_lut[grid_idx]) {
 		neighbours += _grid->get_curr(idx);
 	}
 	return neighbours;
