@@ -8,7 +8,7 @@
 template<std::size_t NumPartitions>
 constexpr std::array<std::pair<std::size_t, std::size_t>, NumPartitions> partition(std::size_t val)
 {
-	std::array<std::pair<std::size_t, std::size_t>, NumPartitions> res;
+	std::array<std::pair<std::size_t, std::size_t>, NumPartitions> res{};
 	std::size_t const div = val / NumPartitions;
 	std::size_t mod = val % NumPartitions;
 

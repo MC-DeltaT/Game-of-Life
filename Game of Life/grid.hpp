@@ -3,38 +3,34 @@
 #include <array>
 #include <cstddef>
 #include <memory>
-#include <utility>
-#include <vector>
 
 
 template<std::size_t Rows, std::size_t Cols>
 class game_grid {
 public:
-	game_grid();
+	static_assert(Rows >= 2 && Cols >= 2);
 
-	constexpr std::size_t rows() const;
-	constexpr std::size_t cols() const;
-	constexpr std::size_t size() const;
-
-	void rand_init();
-	bool curr_state(std::size_t i) const;
-	bool update_next(std::size_t i);
-	void load_next();
-
-private:
-	static inline constexpr std::array<std::pair<std::ptrdiff_t, std::ptrdiff_t>, 8> _neighbour_offsets{
-		std::pair{-1, -1}, std::pair{-1, 0}, std::pair{-1, 1},
-		std::pair{0, -1},					 std::pair{0, 1},
-		std::pair{1, -1},  std::pair{1, 0},  std::pair{1, 1}
+	static inline constexpr std::size_t rows = Rows;
+	static inline constexpr std::size_t cols = Cols;
+	static inline constexpr std::size_t size = Rows * Cols;
+	static inline constexpr std::size_t neighbour_count = 8;
+	static inline constexpr std::array<std::ptrdiff_t, neighbour_count> neighbour_offsets{
+		-std::ptrdiff_t{Cols} - 1, -std::ptrdiff_t{Cols}, -std::ptrdiff_t{Cols} + 1,
+		-1,												  1,
+		Cols - 1,				   Cols,				  Cols + 1
 	};
 
+	game_grid();
+
+	bool get_curr(std::size_t idx) const;
+	void set_next(std::size_t idx, bool state) const;
+
+	void load_next();
+	void rand_init();
+
+private:
 	std::unique_ptr<bool[]> _curr;
 	std::unique_ptr<bool[]> _next;
-	std::vector<std::array<std::size_t, _neighbour_offsets.size()>> _neighbour_lut;
-	
-	unsigned _count_neighbours(std::size_t i) const;
-
-	bool _next_state(std::size_t i) const;
 };
 
 

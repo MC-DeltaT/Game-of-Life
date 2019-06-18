@@ -1,17 +1,15 @@
 #pragma once
 
-#include "grid.hpp"
-
 #include <cstddef>
 #include <vector>
 #define NOMINMAX
 #include <Windows.h>
 
 
-template<std::size_t Rows, std::size_t Cols>
+template<class GameGrid>
 class console_renderer {
 public:
-	console_renderer(game_grid<Rows, Cols> const& grid, HANDLE console_handle);
+	console_renderer(GameGrid const& grid, HANDLE console_handle);
 
 	void render(std::size_t grid_idx);
 	void render_all();
@@ -20,9 +18,9 @@ public:
 private:
 	static inline constexpr char live_cell = 'x';
 	static inline constexpr char dead_cell = ' ';
-	static inline constexpr std::size_t _buf_size = Rows * (Cols + 1);
+	static inline constexpr std::size_t _buf_size = GameGrid::size + GameGrid::rows;
 
-	game_grid<Rows, Cols> const* _grid;
+	GameGrid const* _grid;
 	std::vector<char> _data;
 	HANDLE _console_handle;
 
@@ -31,9 +29,12 @@ private:
 
 class null_renderer {
 public:
-	void render(std::size_t) {}
-	void render_all() {}
-	void draw() {}
+	template<typename... Args>
+	void render(Args&&...) const {}
+	template<typename... Args>
+	void render_all(Args&&...) const {}
+	template<typename... Args>
+	void draw(Args&&...) const {}
 };
 
 

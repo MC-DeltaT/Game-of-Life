@@ -166,10 +166,12 @@
     <ClInclude Include="render.hpp" />
     <ClInclude Include="execution.hpp" />
     <ClInclude Include="grid.hpp" />
+    <ClInclude Include="update.hpp" />
     <ClInclude Include="utility.hpp" />
   </ItemGroup>
   <ItemGroup>
     <None Include="execution.tpp" />
+    <None Include="update.tpp" />
     <None Include="utility.tpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

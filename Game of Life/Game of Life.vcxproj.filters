@@ -38,6 +38,9 @@
     <ClInclude Include="render.hpp">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="update.hpp">
+      <Filter>Header Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <None Include="utility.tpp">
@@ -50,6 +53,9 @@
       <Filter>Template Files</Filter>
     </None>
     <None Include="render.tpp">
+      <Filter>Template Files</Filter>
+    </None>
+    <None Include="update.tpp">
       <Filter>Template Files</Filter>
     </None>
   </ItemGroup>

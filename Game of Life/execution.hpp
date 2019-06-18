@@ -1,6 +1,6 @@
 #pragma once
 
-#include "grid.hpp"
+#include "utility.hpp"
 
 #include <array>
 #include <atomic>
@@ -9,19 +9,20 @@
 #include <utility>
 
 
-template<std::size_t Rows, std::size_t Cols, class Renderer, std::size_t NumThreads>
+template<class GameGrid, class StateUpdater, class Renderer, std::size_t NumThreads>
 class cpu_executor {
 public:
 	~cpu_executor();
-	cpu_executor(game_grid<Rows, Cols>& grid, Renderer& renderer);
+	cpu_executor(GameGrid& grid, StateUpdater& updater, Renderer& renderer);
 
 	void render_and_update();
 
 private:
-	game_grid<Rows, Cols>* _grid;
+	GameGrid* _grid;
+	StateUpdater* _updater;
 	Renderer* _renderer;
 	std::array<std::thread, NumThreads - 1> _threads;
-	std::array<std::pair<std::size_t, std::size_t>, NumThreads> _partitions;
+	static inline constexpr std::array<std::pair<std::size_t, std::size_t>, NumThreads> _partitions = partition<NumThreads>(GameGrid::size);
 	std::atomic_size_t _sync1;
 	std::atomic_size_t _sync2;
 	bool _exit;
@@ -30,18 +31,19 @@ private:
 	void _thread_func(std::size_t thread_idx);
 };
 
-template<std::size_t Rows, std::size_t Cols, class Renderer>
-class cpu_executor<Rows, Cols, Renderer, 0> {};
+template<class GameGrid, class StateUpdater, class Renderer>
+class cpu_executor<GameGrid, StateUpdater, Renderer, 0> {};
 
-template<std::size_t Rows, std::size_t Cols, class Renderer>
-class cpu_executor<Rows, Cols, Renderer, 1> {
+template<class GameGrid, class StateUpdater, class Renderer>
+class cpu_executor<GameGrid, StateUpdater, Renderer, 1> {
 public:
-	cpu_executor(game_grid<Rows, Cols>& grid, Renderer& renderer);
+	cpu_executor(GameGrid& grid, StateUpdater& updater, Renderer& renderer);
 
 	void render_and_update();
 
 private:
-	game_grid<Rows, Cols>* _grid;
+	GameGrid* _grid;
+	StateUpdater* _updater;
 	Renderer* _renderer;
 };
 

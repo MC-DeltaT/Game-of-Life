@@ -1,6 +1,7 @@
 #include "execution.hpp"
 #include "grid.hpp"
 #include "render.hpp"
+#include "update.hpp"
 #include "utility.hpp"
 
 #include <chrono>
@@ -42,8 +43,8 @@ int main()
 #else
 	console_renderer renderer(grid, stdout_handle);
 #endif
-
-	cpu_executor<rows, cols, decltype(renderer), num_threads> executor(grid, renderer);
+	state_updater updater(grid);
+	cpu_executor<decltype(grid), decltype(updater), decltype(renderer), num_threads> executor(grid, updater, renderer);
 
 #ifdef BENCHMARK
 	auto const t1 = std::chrono::high_resolution_clock::now();
