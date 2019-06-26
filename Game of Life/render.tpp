@@ -1,5 +1,6 @@
 #pragma once
 
+#include "grid.hpp"
 #include "utility.hpp"
 
 #include <cstddef>
@@ -8,41 +9,30 @@
 #include <Windows.h>
 
 
-template<class GameGrid>
-console_renderer<GameGrid>::console_renderer(GameGrid const& grid, HANDLE console_handle) :
+template<std::size_t Rows, std::size_t Cols>
+console_renderer<Rows, Cols>::console_renderer(game_grid<Rows, Cols> const& grid, HANDLE console_handle) :
 	_grid(&grid),
 	_data(_buf_size),
 	_console_handle(console_handle)
 {
-	for (std::size_t i = GameGrid::cols; i < _buf_size; i += GameGrid::cols + 1) {
+	for (std::size_t i = Cols; i < _buf_size; i += Cols + 1) {
 		_data[i] = '\n';
 	}
 }
 
-template<class GameGrid>
-void console_renderer<GameGrid>::render(std::size_t grid_idx)
+template<std::size_t Rows, std::size_t Cols>
+void console_renderer<Rows, Cols>::render(std::size_t begin_idx, std::size_t end_idx)
 {
-	std::size_t buf_idx = grid_idx + (grid_idx / GameGrid::cols);
-	_render(grid_idx, buf_idx);
-}
+	debug_assert(end_idx >= begin_idx);
 
-template<class GameGrid>
-void console_renderer<GameGrid>::render_all()
-{
-	std::size_t grid_idx = 0;
-	std::size_t buf_idx = 0;
-	for (std::size_t i = 0; i < GameGrid::rows; ++i) {
-		for (std::size_t j = 0; j < GameGrid::cols; ++j) {
-			_render(grid_idx, buf_idx);
-			++grid_idx;
-			++buf_idx;
-		}
-		++buf_idx;
+	for (std::size_t grid_idx = begin_idx; grid_idx < end_idx; ++grid_idx) {
+		std::size_t buf_idx = grid_idx + (grid_idx / Cols);
+		_render(grid_idx, buf_idx);
 	}
 }
 
-template<class GameGrid>
-void console_renderer<GameGrid>::draw() const
+template<std::size_t Rows, std::size_t Cols>
+void console_renderer<Rows, Cols>::draw() const
 {
 	SetConsoleCursorPosition(_console_handle, COORD{0, 0});
 	DWORD written;
@@ -51,8 +41,8 @@ void console_renderer<GameGrid>::draw() const
 	debug_assert(written == _buf_size);
 }
 
-template<class GameGrid>
-void console_renderer<GameGrid>::_render(std::size_t grid_idx, std::size_t buf_idx)
+template<std::size_t Rows, std::size_t Cols>
+void console_renderer<Rows, Cols>::_render(std::size_t grid_idx, std::size_t buf_idx)
 {
 	bool const state = _grid->get_curr(grid_idx);
 	auto& c = _data[buf_idx];

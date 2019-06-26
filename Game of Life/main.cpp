@@ -13,11 +13,15 @@
 
 
 #define BENCHMARK
-constexpr std::size_t benchmark_iterations = 1000000ull;
+constexpr std::size_t benchmark_iterations = 2500ull;
 
-
-constexpr std::size_t rows = 100;
-constexpr std::size_t cols = 100;
+#ifdef BENCHMARK
+constexpr std::size_t rows = 2000;
+constexpr std::size_t cols = 2000;
+#else
+constexpr std::size_t rows = 35;
+constexpr std::size_t cols = 70;
+#endif
 constexpr std::size_t num_threads = 3;
 
 
@@ -44,7 +48,7 @@ int main()
 	console_renderer renderer(grid, stdout_handle);
 #endif
 	state_updater updater(grid);
-	cpu_executor<decltype(grid), decltype(updater), decltype(renderer), num_threads> executor(grid, updater, renderer);
+	cpu_executor<rows, cols, decltype(renderer), num_threads> executor(grid, updater, renderer);
 
 #ifdef BENCHMARK
 	auto const t1 = std::chrono::high_resolution_clock::now();

@@ -1,7 +1,10 @@
 #pragma once
 
+#include "utility.hpp"
+
 #include <array>
 #include <cstddef>
+#include <cstdint>
 #include <memory>
 
 
@@ -13,24 +16,23 @@ public:
 	static inline constexpr std::size_t rows = Rows;
 	static inline constexpr std::size_t cols = Cols;
 	static inline constexpr std::size_t size = Rows * Cols;
-	static inline constexpr std::size_t neighbour_count = 8;
-	static inline constexpr std::array<std::ptrdiff_t, neighbour_count> neighbour_offsets{
-		-std::ptrdiff_t{Cols} - 1, -std::ptrdiff_t{Cols}, -std::ptrdiff_t{Cols} + 1,
-		-1,												  1,
-		Cols - 1,				   Cols,				  Cols + 1
-	};
 
 	game_grid();
 
+	std::uint8_t* curr();
+	std::uint8_t const* curr() const;
+	std::uint8_t* next();
+	std::uint8_t const* next() const;
+
 	bool get_curr(std::size_t idx) const;
-	void set_next(std::size_t idx, bool state) const;
+	void set_next(std::size_t idx, bool state);
 
 	void load_next();
 	void rand_init();
 
 private:
-	std::unique_ptr<bool[]> _curr;
-	std::unique_ptr<bool[]> _next;
+	aligned_array<std::uint8_t, 32> _curr;
+	aligned_array<std::uint8_t, 32> _next;
 };
 
 
