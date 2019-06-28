@@ -12,20 +12,20 @@
 #include <Windows.h>
 
 
-#define BENCHMARK
+//#define BENCHMARK
 constexpr std::size_t benchmark_iterations = 2500ull;
 
 #ifdef BENCHMARK
 constexpr std::size_t rows = 2000;
 constexpr std::size_t cols = 2000;
 #else
-constexpr std::size_t rows = 35;
-constexpr std::size_t cols = 70;
+constexpr std::size_t rows = 800;
+constexpr std::size_t cols = 800;
 #endif
-constexpr std::size_t num_threads = 3;
+constexpr std::size_t num_threads = 1;
 
 
-int main()
+int wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
 {
 #ifdef BENCHMARK
 	std::cout << "Rows: " << rows << std::endl;
@@ -34,9 +34,6 @@ int main()
 	std::cout << "Iterations: " << benchmark_iterations << std::endl;
 	std::cout << "Total cell updates: " << rows * cols * benchmark_iterations << std::endl;
 	std::cout << "Threads: " << num_threads << std::endl;
-#else
-	HANDLE const stdout_handle = GetStdHandle(STD_OUTPUT_HANDLE);
-	set_console_size(stdout_handle, rows, cols);
 #endif
 
 	game_grid<rows, cols> grid;
@@ -45,7 +42,7 @@ int main()
 #ifdef BENCHMARK
 	null_renderer renderer{};
 #else
-	console_renderer renderer(grid, stdout_handle);
+	window_renderer renderer(grid);
 #endif
 	state_updater updater(grid);
 	cpu_executor<rows, cols, decltype(renderer), num_threads> executor(grid, updater, renderer);

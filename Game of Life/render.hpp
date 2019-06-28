@@ -2,11 +2,43 @@
 
 #include "grid.hpp"
 
-#include <cstddef>
-#include <vector>
 #define NOMINMAX
+#include <array>
+#include <atlbase.h>
+#include <atomic>
+#include <cstddef>
+#include <cstdint>
+#include <d2d1.h>
+#include <thread>
+#include <vector>
 #include <Windows.h>
 
+
+template<std::size_t Rows, std::size_t Cols>
+class window_renderer {
+public:
+	~window_renderer();
+	window_renderer(game_grid<Rows, Cols> const& grid);
+
+	void render(std::size_t begin_idx, std::size_t end_idx);
+	void draw() const;
+
+private:
+	// B8G8R8A8 pixel format.
+	static inline constexpr std::array<std::uint8_t, 4> _live_pixel = {0x00, 0xFF, 0x00, 0x00};
+	static inline constexpr std::array<std::uint8_t, 4> _dead_pixel = {0x00, 0x00, 0x00, 0x00};
+
+	game_grid<Rows, Cols> const* _grid;
+	std::vector<std::uint32_t> _pixels;
+	HWND _window;
+	CComPtr<ID2D1HwndRenderTarget> _render_target;
+	CComPtr<ID2D1Bitmap> _bitmap;
+	std::thread _window_thread;
+	std::atomic_bool _window_ready;
+
+	void _window_func();
+	static LRESULT CALLBACK _window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM lparam);
+};
 
 template<std::size_t Rows, std::size_t Cols>
 class console_renderer {
