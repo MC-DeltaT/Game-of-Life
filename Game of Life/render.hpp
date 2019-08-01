@@ -9,6 +9,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <d2d1.h>
+#include <functional>
 #include <thread>
 #include <vector>
 #include <Windows.h>
@@ -18,7 +19,7 @@ template<std::size_t Rows, std::size_t Cols>
 class window_renderer {
 public:
 	~window_renderer();
-	window_renderer(game_grid<Rows, Cols> const& grid);
+	window_renderer(game_grid<Rows, Cols> const& grid, std::function<void(void)> close_callback);
 
 	void render(std::size_t begin_idx, std::size_t end_idx);
 	void draw() const;
@@ -28,6 +29,9 @@ private:
 	static inline constexpr std::array<std::uint8_t, 4> _live_pixel = {0x00, 0xFF, 0x00, 0x00};
 	static inline constexpr std::array<std::uint8_t, 4> _dead_pixel = {0x00, 0x00, 0x00, 0x00};
 
+	// Signals for the window to actually be destroyed and the window thread to exit.
+	static inline constexpr UINT _wm_definite_close = WM_USER;
+
 	game_grid<Rows, Cols> const* _grid;
 	std::vector<std::uint32_t> _pixels;
 	HWND _window;
@@ -35,6 +39,7 @@ private:
 	CComPtr<ID2D1Bitmap> _bitmap;
 	std::thread _window_thread;
 	std::atomic_bool _window_ready;
+	std::function<void(void)> _close_callback;
 
 	void _window_func();
 	static LRESULT CALLBACK _window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM lparam);

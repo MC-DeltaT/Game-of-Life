@@ -16,15 +16,16 @@
 template<std::size_t Rows, std::size_t Cols>
 window_renderer<Rows, Cols>::~window_renderer()
 {
-	DestroyWindow(_window);
+	PostMessage(_window, _wm_definite_close, 0, 0);
 	_window_thread.join();
 }
 
 template<std::size_t Rows, std::size_t Cols>
-window_renderer<Rows, Cols>::window_renderer(game_grid<Rows,Cols> const& grid) :
+window_renderer<Rows, Cols>::window_renderer(game_grid<Rows,Cols> const& grid, std::function<void(void)> close_callback) :
 	_grid(&grid),
 	_pixels(Rows * Cols, 0),
-	_window_ready(false)
+	_window_ready(false),
+	_close_callback(close_callback)
 {
 	_window_thread = std::thread(&window_renderer::_window_func, this);
 	while (!_window_ready) {}
@@ -122,6 +123,13 @@ void window_renderer<Rows, Cols>::_window_func()
 		throw std::runtime_error("Failed to create window.");
 	}
 
+	SetLastError(0);
+	if (0 == SetWindowLongPtr(_window, GWLP_USERDATA, reinterpret_cast<LONG_PTR>(this))) {
+		if (GetLastError() != 0) {
+			throw std::runtime_error("Failed to set window object pointer.");
+		}
+	}
+
 	_window_ready = true;
 
 	MSG msg{};
@@ -135,7 +143,20 @@ template<std::size_t Rows, std::size_t Cols>
 LRESULT window_renderer<Rows, Cols>::_window_proc(HWND window, UINT msg, WPARAM wparam, LPARAM lparam)
 {
 	switch (msg) {
-	case WM_CLOSE:
+	case WM_CLOSE: {
+			auto const ptr = GetWindowLongPtr(window, GWLP_USERDATA);
+			if (ptr == 0) {
+				throw std::runtime_error("Failed to get window object pointer.");
+			}
+			auto& obj = *reinterpret_cast<window_renderer*>(ptr);
+			obj._close_callback();
+			break;
+		}
+		
+	case _wm_definite_close:
+		DestroyWindow(window);
+		break;
+
 	case WM_DESTROY:
 		PostQuitMessage(0);
 		break;

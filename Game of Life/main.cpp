@@ -4,6 +4,7 @@
 #include "update.hpp"
 #include "utility.hpp"
 
+#include <atomic>
 #include <chrono>
 #include <cstddef>
 #include <iostream>
@@ -42,7 +43,8 @@ int wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
 #ifdef BENCHMARK
 	null_renderer renderer{};
 #else
-	window_renderer renderer(grid);
+	std::atomic_bool exit_flag = false;
+	window_renderer renderer(grid, [&](){ exit_flag = true; });
 #endif
 	state_updater updater(grid);
 	cpu_executor<rows, cols, decltype(renderer), num_threads> executor(grid, updater, renderer);
@@ -51,7 +53,7 @@ int wWinMain(HINSTANCE, HINSTANCE, PWSTR, int)
 	auto const t1 = std::chrono::high_resolution_clock::now();
 	for (std::size_t n = 0; n < benchmark_iterations; ++n) {
 #else
-	while (true) {
+	while (!exit_flag) {
 #endif
 		executor.render_and_update();
 		renderer.draw();
