@@ -3,6 +3,7 @@
 #include <array>
 #include <cassert>
 #include <cstddef>
+#include <memory>
 #include <utility>
 #define NOMINMAX
 #include <Windows.h>

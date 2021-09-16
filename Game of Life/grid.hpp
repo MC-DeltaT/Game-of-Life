@@ -2,10 +2,8 @@
 
 #include "utility.hpp"
 
-#include <array>
 #include <cstddef>
 #include <cstdint>
-#include <memory>
 
 
 template<std::size_t Rows, std::size_t Cols>

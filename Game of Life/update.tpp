@@ -7,7 +7,6 @@
 #include <cstdint>
 #include <immintrin.h>
 #include <intrin.h>
-#include <limits>
 
 
 template<std::size_t Rows, std::size_t Cols>
